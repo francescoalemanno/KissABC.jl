@@ -14,7 +14,7 @@ macro cthreads(condition::Symbol,loop) #does not work well because of #15276, bu
     end)
 end
 
-import Distributions.pdf, Distributions.logpdf, Random.rand
+import Distributions.pdf, Random.rand
 
 struct MixedVariate <: VariateForm; end
 struct MixedSupport <: ValueSupport; end
@@ -30,7 +30,7 @@ struct Factored{N}<:Distribution{MixedVariate,MixedSupport}
 end
 
 pdf(d::Factored,x) = prod(i->pdf(d.p[i],x[i]),eachindex(x))
-logpdf(d::Factored,x) = sum(i->logpdf(d.p[i],x[i]),eachindex(x))
+
 rand(rng::AbstractRNG,factoreddist::Factored) = rand.(Ref(rng),factoreddist.p)
 
 function compute_kernel_scales(prior::Factored,V)
