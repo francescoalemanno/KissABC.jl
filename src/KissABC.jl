@@ -23,14 +23,25 @@ struct MixedSupport <: ValueSupport; end
     Factored{N} <: Distribution{MixedVariate, MixedSupport}
 
 a `Distribution` type that can be used to combine multiple `Distribution`'s and sample from them.
+
+Example: it can be used as `prior = Factored(Normal(0,1), Uniform(-1,1))`
 """
 struct Factored{N}<:Distribution{MixedVariate,MixedSupport}
     p::NTuple{N,Distribution}
     Factored(args::Distribution...) = new{length(args)}(args)
 end
+"""
+    pdf(d::Factored, x) = begin
 
+Function to evaluate the pdf of a `Factored` distribution object
+"""
 pdf(d::Factored,x) = prod(i->pdf(d.p[i],x[i]),eachindex(x))
 
+"""
+    rand(rng::AbstractRNG, factoreddist::Factored)
+
+function to sample one element from a `Factored` object
+"""
 rand(rng::AbstractRNG,factoreddist::Factored) = rand.(Ref(rng),factoreddist.p)
 
 function compute_kernel_scales(prior::Factored,V)
