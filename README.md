@@ -71,4 +71,4 @@ we can see that the algorithm has correctly inferred both parameters, this exact
 This package currently implements two algorithms whose details can be found in Docs
 
 1. `ABC` this is a standard rejection algorithm, you can find an example in `test/runtests.jl`
-1. `ABCSMCPR` this is the sequential monte carlo algorithm by Drovanti et al. 2011, you can find an example in `test/runtests.jl`
+1. `ABCSMCPR` this is the sequential monte carlo algorithm by Drovandi et al. 2011, you can find an example in `test/runtests.jl`
