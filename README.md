@@ -8,7 +8,6 @@
 Table of Contents
 =================
 
-  * [Warnings](#warning)
   * [Beginners Usage Guide](#usage-guide)
   * [Details](#details)
 
