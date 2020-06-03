@@ -12,9 +12,6 @@ Table of Contents
   * [Beginners Usage Guide](#usage-guide)
   * [Details](#details)
 
-## Warning
-The objective of this package is implementing the most efficient ABC algorithms in their most general form, this package (right now) does not fullfill this goal entirely, although with some care you can still take advantage of `KissABC`
-
 ## Usage guide
 
 The ingredients you need to use Approximate Bayesian Computation:
@@ -70,5 +67,5 @@ we can see that the algorithm has correctly inferred both parameters, this exact
 ## Details
 This package currently implements two algorithms whose details can be found in Docs
 
-1. `ABC` this is a standard rejection algorithm, you can find an example in `test/runtests.jl`
-1. `ABCSMCPR` this is the sequential monte carlo algorithm by Drovandi et al. 2011, you can find an example in `test/runtests.jl`
+1. `ABC` this is a standard rejection algorithm, you can find examples in `test/runtests.jl`
+1. `ABCSMCPR` this is the sequential monte carlo algorithm by Drovandi et al. 2011, you can find an examples in `test/runtests.jl`
