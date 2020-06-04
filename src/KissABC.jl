@@ -1,4 +1,4 @@
-module KissABC
+#module KissABC
 
 using Base.Threads
 using Distributions
@@ -148,6 +148,70 @@ function ABCSMCPR(prior, simulation, data, distance, ϵ_target;
     θs,Δs
 end
 
+function deperturb(sample::T,r1::T,r2::T) where T <: Tuple
+    l=length(sample)
+    ntuple(i -> deperturb(sample[i],r1[i],r2[i]),l)
+end
+
+function deperturb(sample::T,r1::T,r2::T) where T <: Number
+    p = (r1-r2)*(rand()*0.3+0.9) + 0.2*randn()*abs(r1-r2)
+    if T <: Integer
+        p=round(p,RoundNearestTiesAway)
+    end
+    sample + T(p)
+end
+
+function ABCDE(prior, simulation, data, distance, ϵ_target;
+                  nparticles=100, maxsimpp=1000, parallel=false, params=(), verbose=true)
+    θs=[rand(prior) for i in 1:nparticles]
+    Δs=zeros(nparticles)
+    @cthreads parallel for i in 1:nparticles
+        x=simulation(θs[i],params)
+        Δs[i]=distance(x,data)
+    end
+    nsim=0
+    while maximum(Δs)>ϵ_target && nsim < maxsimpp*nparticles
+        nθs=copy(θs)
+        nΔs=copy(Δs)
+        ϵ_current=max(ϵ_target,mean(extrema(Δs)))
+        idx=(1:nparticles)[Δs.>ϵ_current]
+        @cthreads parallel for i in idx
+            a=i
+            while a==i
+                a=rand(1:nparticles)
+            end
+            b=a
+            while b==i || b==a
+                b=rand(1:nparticles)
+            end
+            c=a
+            while c==i || c==a || c==b
+                c=rand(1:nparticles)
+            end
+            θp=deperturb(θs[c],θs[a],θs[b])
+            w_prior=pdf(prior,θp)/pdf(prior,θs[i])
+            w=min(1,w_prior)
+            rand()>w && continue
+            xp=simulation(θp,params)
+            dp=distance(xp,data)
+            if dp<ϵ_current
+                nΔs[i]=dp
+                nθs[i]=θp
+            end
+        end
+        θs=nθs
+        Δs=nΔs
+        nsim+=length(idx)
+        verbose && @info "Finished run:" completion=1-sum(Δs.>ϵ_target)/nparticles num_simulations=nsim ϵ=ϵ_current
+    end
+    if verbose
+        if ϵ_target < maximum(Δs)
+            @warn "Failed to reach target ϵ.\n   possible fix: increase maximum number of simulations"
+        end
+    end
+    θs,Δs
+end
+
 function ABC(prior, simulation, data, distance, α_target;
              nparticles=100, params=(), parallel=false)
     @assert 0<α_target<=1 "α_target is the acceptance rate, and must be properly set between 0 - 1."
@@ -168,7 +232,7 @@ function ABC(prior, simulation, data, distance, α_target;
      ϵ=distances[idx[end]])
 end
 
-export ABC, ABCSMCPR, Factored
+export ABC, ABCSMCPR, ABCDE, Factored
 
 
 """
@@ -225,6 +289,39 @@ Sequential Monte Carlo algorithm (Drovandi et al. 2011).
 - `verbose`: when set to `true` verbosity is enabled
 """
 ABCSMCPR
+
+
+"""
+    ABCDE(prior, simulation, data, distance, ϵ_target; nparticles = 100, maxsimpp = 1000, parallel = false, params = (), verbose = true)
+
+A sequential monte carlo algorithm inspired by differential evolution, work in progress, very efficient (inspired by Turner et al. 2011, as this implementation is not 1 to 1)
+
+# Arguments:
+- `prior`: a `Distribution` to use for sampling candidate parameters
+- `simulation`: simulation function `sim(prior_sample, constants) -> data` that accepts a prior sample and the `params` constant and returns a simulated dataset
+- `data`: target dataset which must be compared with simulated datasets
+- `distance`: distance function `dist(x,y)` that return the distance (a scalar value) between `x` and `y`
+- `ϵ_target`: maximum acceptable distance between simulated datasets and the target dataset
+- `nparticles`: number of samples from the approximate posterior that will be returned
+- `maxsimpp`: average maximum number of simulations per particle
+- `parallel`: when set to `true` multithreaded parallelism is enabled
+- `params`: an optional set of constants to be passed as second argument to the simulation function
+- `verbose`: when set to `true` verbosity is enabled
+"""
+ABCDE
+
+"""
+    deperturb(sample::T, r1::T, r2::T)
+
+Differential Evolution perturbation kernel, generalizing this interface is WIP
+
+# Arguments:
+- `sample`
+- `r1`
+- `r2`
+"""
+deperturb
+
 
 """
     ABC(prior, simulation, data, distance, α_target; nparticles = 100, params = (), parallel = false)

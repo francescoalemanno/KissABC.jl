@@ -31,13 +31,15 @@ Random.seed!(1)
 
     dist(x,y)=sum(abs,x.-y)
     tinydata=(0,11)
-    nparticles=50000
+    nparticles=5000
     T=ABC(pri,model,tinydata,dist,0.05,nparticles=nparticles)
     P,d,ϵ=T
     @show ϵ,length(P)
     @test abs(mean(getindex.(P,1)) -46)/std(getindex.(P,1))<3/sqrt(nparticles)
-    res,Δ=ABCSMCPR(pri,model,tinydata,dist,0.05,nparticles=2000)
+    res,Δ=ABCDE(pri,model,tinydata,dist,0.05,nparticles=5000)
     @test abs(median(getindex.(res,1)) - 44) < 1
+    res2,Δ=ABCSMCPR(pri,model,tinydata,dist,0.05,nparticles=6000)
+    @test abs(median(getindex.(res2,1)) - 44) < 1
     @test abs(median(getindex.(P,1)) - 44) < 1
 end
 
@@ -47,6 +49,8 @@ end
     dist(x,y)=abs(x-y)
     P,w=ABCSMCPR(pri,sim,1.5,dist,0.02,nparticles=2000)
     @test abs((mean(P)-1/sqrt(2))/0.02)<3
+    P,w=ABCDE(pri,sim,1.5,dist,0.02,nparticles=2000)
+    @test abs((mean(P)-1/sqrt(2))/0.02)<3
 end
 
 @testset "Normal dist + Uniform Distr -> inference" begin
@@ -54,6 +58,10 @@ end
     sim((n,du),params)=(n*n+du)*(n+randn()*0.1)
     dist(x,y)=abs(x-y)
     P,_ = ABCSMCPR(pri,sim,5.5,dist,0.025)
+    stat=[sim(P[i],1) for i in eachindex(P)]
+    @show mean(stat)
+    @test abs((mean(stat)-5.5)/std(stat)) < 1
+    P,_ = ABCDE(pri,sim,5.5,dist,0.025)
     stat=[sim(P[i],1) for i in eachindex(P)]
     @show mean(stat)
     @test abs((mean(stat)-5.5)/std(stat)) < 1
@@ -69,7 +77,7 @@ function brownian((μ,σ),N)
     end
     traj.-traj[:,1:1]
 end
-function brownianrms((μ,σ),N,samples=50)
+function brownianrms((μ,σ),N,samples=100)
     trajsq=zeros(2,N)
     for i in 1:samples
         trajsq .+= brownian((μ,σ),N).^2 ./ samples
@@ -81,18 +89,24 @@ end
     tdata=brownianrms((0.5,2.0),30,10000)
     prior=Factored(Uniform(0,1),Uniform(0,4))
     dist(x,y)=sum(abs,x.-y)/length(x)
-    @time res,w=ABCSMCPR(prior,brownianrms,tdata,dist,0.5,params=30,parallel=true)
+    res,w=ABCSMCPR(prior,brownianrms,tdata,dist,0.5,params=30,parallel=true)
     @test abs((mean(getindex.(res,2))-2)/std(getindex.(res,2)))<4/sqrt(length(w))
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
     @show mean(getindex.(res,1)),std(getindex.(res,1))
     @show mean(getindex.(res,2)),std(getindex.(res,2))
-    @time res,w,ϵ=ABC(prior,brownianrms,tdata,dist,0.03,params=30,parallel=true)
+    res,w=ABCDE(prior,brownianrms,tdata,dist,0.5,params=30,parallel=true)
+    @test abs((mean(getindex.(res,2))-2)/std(getindex.(res,2)))<4/sqrt(length(w))
+    @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
+    @show mean(getindex.(res,1)),std(getindex.(res,1))
+    @show mean(getindex.(res,2)),std(getindex.(res,2))
+    res,w,ϵ=ABC(prior,brownianrms,tdata,dist,0.03,params=30,parallel=true)
     @show ϵ
     @show mean(getindex.(res,1)),std(getindex.(res,1))
     @show mean(getindex.(res,2)),std(getindex.(res,2))
     @test abs((mean(getindex.(res,2))-2)/std(getindex.(res,2)))<7/sqrt(length(w))
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<7/sqrt(length(w))
 end
+
 
 #plotting stuff
 #=
