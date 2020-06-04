@@ -294,7 +294,7 @@ ABCSMCPR
 """
     ABCDE(prior, simulation, data, distance, ϵ_target; nparticles = 100, maxsimpp = 1000, parallel = false, params = (), verbose = true)
 
-A sequential monte carlo algorithm inspired by differential evolution, work in progress, very efficient (inspired by Turner et al. 2011, as this implementation is not 1 to 1)
+A sequential monte carlo algorithm inspired by differential evolution, work in progress, very efficient (similar to B.M.Turner 2012)
 
 # Arguments:
 - `prior`: a `Distribution` to use for sampling candidate parameters
