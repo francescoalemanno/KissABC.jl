@@ -162,7 +162,7 @@ function deperturb(sample::T,r1::T,r2::T) where T <: Number
 end
 
 function ABCDE(prior, simulation, data, distance, ϵ_target;
-                  nparticles=100, maxsimpp=1000, parallel=false,α=2/3, params=(), verbose=true)
+                  nparticles=100, maxsimpp=1000, parallel=false, α=2/3, params=(), verbose=true)
     @assert 0<α<1 "α must be strictly between 0 and 1."
     θs=[rand(prior) for i in 1:nparticles]
     Δs=zeros(nparticles)
@@ -297,7 +297,7 @@ ABCSMCPR
 
 
 """
-    ABCDE(prior, simulation, data, distance, ϵ_target; nparticles = 100, maxsimpp = 1000, parallel = false, params = (), verbose = true)
+    ABCDE(prior, simulation, data, distance, ϵ_target; α=2/3, nparticles = 100, maxsimpp = 1000, parallel = false, params = (), verbose = true)
 
 A sequential monte carlo algorithm inspired by differential evolution, work in progress, very efficient (similar to B.M.Turner 2012)
 
