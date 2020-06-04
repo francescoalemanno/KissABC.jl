@@ -169,10 +169,12 @@ function ABCDE(prior, simulation, data, distance, ϵ_target;
         x=simulation(θs[i],params)
         Δs[i]=distance(x,data)
     end
-    nsim=0
+    nsim=nparticles
+    ϵ_current=max(ϵ_target,mean(extrema(Δs)))+1
     while maximum(Δs)>ϵ_target && nsim < maxsimpp*nparticles
         nθs=copy(θs)
         nΔs=copy(Δs)
+        ϵ_past=ϵ_current
         ϵ_current=max(ϵ_target,mean(extrema(Δs)))
         idx=(1:nparticles)[Δs.>ϵ_current]
         @cthreads parallel for i in idx
@@ -194,7 +196,7 @@ function ABCDE(prior, simulation, data, distance, ϵ_target;
             rand()>w && continue
             xp=simulation(θp,params)
             dp=distance(xp,data)
-            if dp<ϵ_current
+            if dp<ϵ_current # || dp < Δs[i]
                 nΔs[i]=dp
                 nθs[i]=θp
             end
@@ -202,7 +204,12 @@ function ABCDE(prior, simulation, data, distance, ϵ_target;
         θs=nθs
         Δs=nΔs
         nsim+=length(idx)
-        verbose && @info "Finished run:" completion=1-sum(Δs.>ϵ_target)/nparticles num_simulations=nsim ϵ=ϵ_current
+        if verbose && ϵ_current!=ϵ_past
+            @info "Finished run:" completion=1-sum(Δs.>ϵ_target)/nparticles num_simulations=nsim ϵ=ϵ_current
+        end
+    end
+    if verbose
+        @info "ABCDE Ended:" completion=1-sum(Δs.>ϵ_target)/nparticles num_simulations=nsim ϵ=ϵ_current
     end
     if verbose
         if ϵ_target < maximum(Δs)
