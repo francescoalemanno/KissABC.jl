@@ -1,4 +1,4 @@
-#module KissABC
+module KissABC
 
 using Base.Threads
 using Distributions
