@@ -156,13 +156,14 @@ end
 function deperturb(sample::T,r1::T,r2::T) where T <: Number
     p = (r1-r2)*(rand()*0.3+0.9) + 0.2*randn()*abs(r1-r2)
     if T <: Integer
-        p=round(p,RoundNearestTiesAway)
+        p=round(p,RoundNearest)
     end
     sample + T(p)
 end
 
 function ABCDE(prior, simulation, data, distance, ϵ_target;
-                  nparticles=100, maxsimpp=1000, parallel=false, params=(), verbose=true)
+                  nparticles=100, maxsimpp=1000, parallel=false,α=2/3, params=(), verbose=true)
+    @assert 0<α<1 "α must be strictly between 0 and 1."
     θs=[rand(prior) for i in 1:nparticles]
     Δs=zeros(nparticles)
     @cthreads parallel for i in 1:nparticles
@@ -175,28 +176,25 @@ function ABCDE(prior, simulation, data, distance, ϵ_target;
         nθs=copy(θs)
         nΔs=copy(Δs)
         ϵ_past=ϵ_current
-        ϵ_current=max(ϵ_target,mean(extrema(Δs)))
+        ϵ_current=max(ϵ_target,sum(extrema(Δs).*(1-α,α)))
         idx=(1:nparticles)[Δs.>ϵ_current]
         @cthreads parallel for i in idx
-            a=i
-            while a==i
-                a=rand(1:nparticles)
-            end
+            a=rand(1:nparticles)
             b=a
-            while b==i || b==a
+            while b==a
                 b=rand(1:nparticles)
             end
             c=a
-            while c==i || c==a || c==b
+            while c==a || c==b
                 c=rand(1:nparticles)
             end
-            θp=deperturb(θs[c],θs[a],θs[b])
+            θp=deperturb(θs[a],θs[b],θs[c])
             w_prior=pdf(prior,θp)/pdf(prior,θs[i])
             w=min(1,w_prior)
             rand()>w && continue
             xp=simulation(θp,params)
             dp=distance(xp,data)
-            if dp<ϵ_current # || dp < Δs[i]
+            if dp<ϵ_current
                 nΔs[i]=dp
                 nθs[i]=θp
             end
@@ -309,6 +307,7 @@ A sequential monte carlo algorithm inspired by differential evolution, work in p
 - `data`: target dataset which must be compared with simulated datasets
 - `distance`: distance function `dist(x,y)` that return the distance (a scalar value) between `x` and `y`
 - `ϵ_target`: maximum acceptable distance between simulated datasets and the target dataset
+- `α`: the adaptive ϵ at every iteration is chosen as `ϵ → m*(1-α)+M*α` where `m` and `M` are respectively minimum and maximum distance of current population.
 - `nparticles`: number of samples from the approximate posterior that will be returned
 - `maxsimpp`: average maximum number of simulations per particle
 - `parallel`: when set to `true` multithreaded parallelism is enabled
