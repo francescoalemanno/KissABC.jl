@@ -35,12 +35,17 @@ Random.seed!(1)
     T=ABC(pri,model,tinydata,dist,0.05,nparticles=nparticles)
     P,d,ϵ=T
     @show ϵ,length(P)
-    @test abs(mean(getindex.(P,1)) -46)/std(getindex.(P,1))<3/sqrt(nparticles)
-    res,Δ=ABCDE(pri,model,tinydata,dist,0.05,nparticles=5000)
-    @test abs(median(getindex.(res,1)) - 44) < 1
+    @test abs(mean(getindex.(P,1)) -46)/std(getindex.(P,1))<5/sqrt(nparticles)
+    @show mean(getindex.(P,1))
+    res,Δ=ABCDE(pri,model,tinydata,dist,0.01,nparticles=5000)
+    @show mean(getindex.(res,1))
+    @test abs(mean(getindex.(res,1)) -46)/std(getindex.(res,1))<5/sqrt(nparticles)
     res2,Δ=ABCSMCPR(pri,model,tinydata,dist,0.05,nparticles=6000)
-    @test abs(median(getindex.(res2,1)) - 44) < 1
-    @test abs(median(getindex.(P,1)) - 44) < 1
+    @test abs(mean(getindex.(res2,1)) -46)/std(getindex.(res2,1))<5/sqrt(nparticles)
+
+    @test abs(median(getindex.(res,1)) - 44) <= 1
+    @test abs(median(getindex.(res2,1)) - 44) <= 1
+    @test abs(median(getindex.(P,1)) - 44) <= 1
 end
 
 @testset "Normal dist -> Dirac Delta inference" begin
