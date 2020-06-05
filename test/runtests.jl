@@ -116,6 +116,24 @@ end
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<7/sqrt(length(w))
 end
 
+#benchmark
+#=
+function sim((u1, p1), params; n=10^6, raw=false)
+ u2 = (1.0 - u1*p1)/(1.0 - p1)
+ x = randexp(n) .* ifelse.(rand(n) .< p1, u1, u2)
+ raw && return x
+ [std(x), median(x)]
+end
+
+function dist(s, s0)
+ sqrt(sum(((s .- s0)./s).^2))
+end
+
+t1= @elapsed ABCSMCPR(Factored(Uniform(0,1), Uniform(0.5,1)), sim, [2.2, 0.4], dist, 0.01, nparticles=100, parallel=true,α=0.5)
+t2= @elapsed ABCDE(Factored(Uniform(0,1), Uniform(0.5,1)), sim, [2.2, 0.4], dist, 0.01, nparticles=100, parallel=true,α=0.5)
+t1/t2
+
+=#
 
 #plotting stuff
 #=
