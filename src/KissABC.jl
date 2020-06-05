@@ -86,6 +86,7 @@ end
 
 function ABCSMCPR(prior, simulation, data, distance, ϵ_target;
                   nparticles=100, maxsimpp=1e3, α=0.3, c=0.01, parallel=false, params=(), verbose=true)
+    # https://doi.org/10.1111/j.1541-0420.2010.01410.x
     Nα=ceil(Int,α*nparticles)
     @assert 2<Nα<nparticles-1
     maxsimulations=nparticles*maxsimpp
@@ -162,6 +163,7 @@ end
 
 function ABCDE(prior, simulation, data, distance, ϵ_target;
                   nparticles=100, maxsimpp=200, parallel=false, α=1/3, params=(), verbose=true)
+    # simpler version of https://doi.org/10.1016/j.jmp.2012.06.004
     @assert 0<α<1 "α must be strictly between 0 and 1."
     θs=[rand(prior) for i in 1:nparticles]
     Δs=zeros(nparticles)
