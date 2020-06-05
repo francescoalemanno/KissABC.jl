@@ -276,7 +276,7 @@ kerneldensity
 """
     ABCSMCPR(prior, simulation, data, distance, ϵ_target; nparticles = 100, maxsimpp = 1000.0, α = 0.3, c = 0.01, parallel = false, params = (), verbose = true)
 
-Sequential Monte Carlo algorithm (Drovandi et al. 2011).
+Sequential Monte Carlo algorithm (Drovandi et al. 2011, https://doi.org/10.1111/j.1541-0420.2010.01410.x).
 
 # Arguments:
 - `prior`: a `Distribution` to use for sampling candidate parameters
@@ -298,7 +298,7 @@ ABCSMCPR
 """
     ABCDE(prior, simulation, data, distance, ϵ_target; α=1/3, nparticles = 100, maxsimpp = 200, parallel = false, params = (), verbose = true)
 
-A sequential monte carlo algorithm inspired by differential evolution, work in progress, very efficient (similar to B.M.Turner 2012)
+A sequential monte carlo algorithm inspired by differential evolution, work in progress, very efficient (simpler version of B.M.Turner 2012, https://doi.org/10.1016/j.jmp.2012.06.004)
 
 # Arguments:
 - `prior`: a `Distribution` to use for sampling candidate parameters
