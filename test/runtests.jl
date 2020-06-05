@@ -130,9 +130,9 @@ sim((μ,σ),param)=randn(100).*σ.+μ
 
 prior=Factored(Uniform(1,3),Truncated(Normal(0,0.1),0,100))
 
-res,_=ABCDE(prior,sim,tdata,ksdist,0.1,nparticles=5000,parallel=true)
+res,_=ABCDE(prior,sim,tdata,ksdist,0.1,nparticles=50000,parallel=true)
 
-prsample=[rand(prior) for i in 1:5000]
+prsample=[rand(prior) for i in 1:10000]
 μ_pr=getindex.(prsample,1)
 σ_pr=getindex.(prsample,2)
 
@@ -145,30 +145,30 @@ mean(σ_p),std(σ_p)
 cd(@__DIR__); pwd()
 function dilateextrema(X)
     E=extrema(X)
-    return 1.05.*(E.-mean(E)).+mean(E)
+    return (1.02,1.08).*(E.-mean(E)).+mean(E)
 end
 using PyPlot
 pygui(true)
-figure(figsize=(10,10).*(1,(sqrt(5)-1)/2),dpi=150)
+figure(figsize=(7.5,7.5).*(1,(sqrt(5)-1)/2),dpi=200)
 subplot(2,2,1)
 title("PRIOR")
-hist(μ_pr,50,histtype="step",label=L"π(μ)")
+hist(μ_pr,50,histtype="step",label=L" π(μ)",density=true)
 xlim(dilateextrema(μ_pr)...)
 legend()
 xlabel(L"\mu")
 subplot(2,2,2)
 title("POSTERIOR")
-hist(μ_p,50,histtype="step",label=L"P(μ|{\rm data})")
+hist(μ_p,50,histtype="step",label=L" P(μ|{\rm data})",density=true)
 xlim(dilateextrema(μ_pr)...)
 legend()
 xlabel(L"\mu")
 subplot(2,2,3)
-hist(σ_pr,50,histtype="step",label=L"π(σ)")
+hist(σ_pr,50,histtype="step",label=L" π(σ)",density=true)
 xlim(dilateextrema(σ_pr)...)
 xlabel(L"\sigma")
 legend()
 subplot(2,2,4)
-hist(σ_p,50,histtype="step",label=L"P(σ|{\rm data})")
+hist(σ_p,50,histtype="step",label=L" P(σ|{\rm data})",density=true)
 xlim(dilateextrema(σ_pr)...)
 xlabel(L"\sigma")
 legend()

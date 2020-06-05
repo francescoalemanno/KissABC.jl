@@ -161,8 +161,36 @@ function deperturb(sample::T,r1,r2) where T<:Number
     sample + T(p)
 end
 
+function ABCDE_innerloop(prior,simulation,data, distance,ϵ,θs,Δs,idx,params,parallel)
+    nθs=copy(θs)
+    nΔs=copy(Δs)
+    nparticles=length(θs)
+    @cthreads parallel for i in idx
+        a=rand(1:nparticles)
+        b=a
+        while b==a
+            b=rand(1:nparticles)
+        end
+        c=a
+        while c==a || c==b
+            c=rand(1:nparticles)
+        end
+        θp=deperturb(θs[a],θs[b],θs[c])
+        w_prior=pdf(prior,θp)/pdf(prior,θs[i])
+        w=min(1,w_prior)
+        rand()>w && continue
+        xp=simulation(θp,params)
+        dp=distance(xp,data)
+        if dp<ϵ || dp < Δs[i]
+            nΔs[i]=dp
+            nθs[i]=θp
+        end
+    end
+    nθs,nΔs
+end
+
 function ABCDE(prior, simulation, data, distance, ϵ_target;
-                  nparticles=100, maxsimpp=200, parallel=false, α=1/3, params=(), verbose=true)
+                  nparticles=100, maxsimpp=200, parallel=false, α=1/3, mcmcsteps=0, params=(), verbose=true)
     # simpler version of https://doi.org/10.1016/j.jmp.2012.06.004
     @assert 0<α<1 "α must be strictly between 0 and 1."
     θs=[rand(prior) for i in 1:nparticles]
@@ -174,34 +202,10 @@ function ABCDE(prior, simulation, data, distance, ϵ_target;
     nsim=nparticles
     ϵ_current=max(ϵ_target,mean(extrema(Δs)))+1
     while maximum(Δs)>ϵ_target && nsim < maxsimpp*nparticles
-        nθs=copy(θs)
-        nΔs=copy(Δs)
         ϵ_past=ϵ_current
         ϵ_current=max(ϵ_target,sum(extrema(Δs).*(1-α,α)))
         idx=(1:nparticles)[Δs.>ϵ_current]
-        @cthreads parallel for i in idx
-            a=rand(1:nparticles)
-            b=a
-            while b==a
-                b=rand(1:nparticles)
-            end
-            c=a
-            while c==a || c==b
-                c=rand(1:nparticles)
-            end
-            θp=deperturb(θs[a],θs[b],θs[c])
-            w_prior=pdf(prior,θp)/pdf(prior,θs[i])
-            w=min(1,w_prior)
-            rand()>w && continue
-            xp=simulation(θp,params)
-            dp=distance(xp,data)
-            if dp<ϵ_current || dp < Δs[i]
-                nΔs[i]=dp
-                nθs[i]=θp
-            end
-        end
-        θs=nθs
-        Δs=nΔs
+        θs,Δs=ABCDE_innerloop(prior,simulation,data, distance,ϵ_current,θs,Δs,idx,params,parallel)
         nsim+=length(idx)
         if verbose && ϵ_current!=ϵ_past
             @info "Finished run:" completion=1-sum(Δs.>ϵ_target)/nparticles num_simulations=nsim ϵ=ϵ_current
@@ -209,7 +213,19 @@ function ABCDE(prior, simulation, data, distance, ϵ_target;
     end
     if verbose
         @info "ABCDE Ended:" completion=1-sum(Δs.>ϵ_target)/nparticles num_simulations=nsim ϵ=ϵ_current
+        if mcmcsteps>0
+            @info "Performing additional MCMC-DE steps"
+        end
     end
+    for i in 1:mcmcsteps
+        nθs,nΔs=ABCDE_innerloop(prior,simulation,data, distance,ϵ_current,θs[end-nparticles+1:end],Δs[end-nparticles+1:end],1:nparticles,params,parallel)
+        append!(θs,nθs)
+        append!(Δs,nΔs)
+        if verbose
+            @info "Finished run:" i remaining_steps=mcmcsteps-i
+        end
+    end
+
     if verbose
         if ϵ_target < maximum(Δs)
             @warn "Failed to reach target ϵ.\n   possible fix: increase maximum number of simulations"
@@ -298,7 +314,7 @@ ABCSMCPR
 
 
 """
-    ABCDE(prior, simulation, data, distance, ϵ_target; α=1/3, nparticles = 100, maxsimpp = 200, parallel = false, params = (), verbose = true)
+    ABCDE(prior, simulation, data, distance, ϵ_target; α=1/3, nparticles = 100, maxsimpp = 200, mcmcsteps=0, parallel = false, params = (), verbose = true)
 
 A sequential monte carlo algorithm inspired by differential evolution, work in progress, very efficient (simpler version of B.M.Turner 2012, https://doi.org/10.1016/j.jmp.2012.06.004)
 
@@ -311,6 +327,7 @@ A sequential monte carlo algorithm inspired by differential evolution, work in p
 - `α`: the adaptive ϵ at every iteration is chosen as `ϵ → m*(1-α)+M*α` where `m` and `M` are respectively minimum and maximum distance of current population.
 - `nparticles`: number of samples from the approximate posterior that will be returned
 - `maxsimpp`: average maximum number of simulations per particle
+- `mcmcsteps`: option to sample more than `1` population of `nparticles`, the end population will contain `(1 + mcmcsteps) * nparticles` total particles
 - `parallel`: when set to `true` multithreaded parallelism is enabled
 - `params`: an optional set of constants to be passed as second argument to the simulation function
 - `verbose`: when set to `true` verbosity is enabled
