@@ -148,12 +148,11 @@ function ABCSMCPR(prior, simulation, data, distance, ϵ_target;
     θs,Δs
 end
 
-function deperturb(sample::T,r1::T,r2::T) where T <: Tuple
-    l=length(sample)
-    ntuple(i -> deperturb(sample[i],r1[i],r2[i]),l)
+function deperturb(sample,r1,r2)
+    deperturb.(sample,r1,r2)
 end
 
-function deperturb(sample::T,r1::T,r2::T) where T <: Number
+function deperturb(sample::T,r1,r2) where T<:Number
     p = (r1-r2)*(rand()*0.3+0.9) + 0.2*randn()*abs(r1-r2)
     if T <: Integer
         p=round(p,RoundNearest)
@@ -162,7 +161,7 @@ function deperturb(sample::T,r1::T,r2::T) where T <: Number
 end
 
 function ABCDE(prior, simulation, data, distance, ϵ_target;
-                  nparticles=100, maxsimpp=1000, parallel=false, α=2/3, params=(), verbose=true)
+                  nparticles=100, maxsimpp=200, parallel=false, α=1/3, params=(), verbose=true)
     @assert 0<α<1 "α must be strictly between 0 and 1."
     θs=[rand(prior) for i in 1:nparticles]
     Δs=zeros(nparticles)
@@ -194,7 +193,7 @@ function ABCDE(prior, simulation, data, distance, ϵ_target;
             rand()>w && continue
             xp=simulation(θp,params)
             dp=distance(xp,data)
-            if dp<ϵ_current
+            if dp<ϵ_current || dp < Δs[i]
                 nΔs[i]=dp
                 nθs[i]=θp
             end
@@ -297,7 +296,7 @@ ABCSMCPR
 
 
 """
-    ABCDE(prior, simulation, data, distance, ϵ_target; α=2/3, nparticles = 100, maxsimpp = 1000, parallel = false, params = (), verbose = true)
+    ABCDE(prior, simulation, data, distance, ϵ_target; α=1/3, nparticles = 100, maxsimpp = 200, parallel = false, params = (), verbose = true)
 
 A sequential monte carlo algorithm inspired by differential evolution, work in progress, very efficient (similar to B.M.Turner 2012)
 
