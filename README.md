@@ -67,7 +67,7 @@ and plotting prior and posterior side by side we get:
 we can see that the algorithm has correctly inferred both parameters, this exact recipe will work for much more complicated models and simulations, with some tuning.
 
 ## Details
-This package currently implements two algorithms whose details can be found in Docs
+This package currently implements 3 algorithms whose details can be found in Docs
 
 1. `ABC` this is a standard rejection algorithm, you can find examples in `test/runtests.jl`
 1. `ABCSMCPR` this is the sequential monte carlo algorithm by Drovandi et al. 2011, you can find an examples in `test/runtests.jl`
