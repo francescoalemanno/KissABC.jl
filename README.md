@@ -48,7 +48,11 @@ Now we are all set, we can use `ABCSMCPR` which is sequential Monte Carlo algori
 ```julia
 res,Δ = ABCSMCPR(prior, sim, tdata, ksdist, 0.1, nparticles=200,parallel=true)
 ```
-we chose a tolerance on distances equal to `0.1`, a number of simulated particles equal to `200`, we enabled Threaded parallelism, and ofcourse the first four parameters are the ingredients we set in the previous steps, the simulated posterior results are in `res`, while in `Δ` we can find the distances calculated for each sample.
+Or, we can use `ABCDE` which is still an SMC algorithm, but with an adaptive proposal, which is much more efficient
+```julia
+res,Δ = ABCDE(prior, sim, tdata, ksdist, 0.1, nparticles=200,parallel=true)
+```
+In any case we chose a tolerance on distances equal to `0.1`, a number of simulated particles equal to `200`, we enabled Threaded parallelism, and ofcourse the first four parameters are the ingredients we set in the previous steps, the simulated posterior results are in `res`, while in `Δ` we can find the distances calculated for each sample.
 We can now extract the results:
 ```julia
 prsample=[rand(prior) for i in 1:5000] #some samples from the prior for comparison
