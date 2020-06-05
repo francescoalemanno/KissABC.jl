@@ -86,7 +86,7 @@ function brownian((μ,σ),N)
     end
     traj.-traj[:,1:1]
 end
-function brownianrms((μ,σ),N,samples=100)
+function brownianrms((μ,σ),N,samples=200)
     trajsq=zeros(2,N)
     for i in 1:samples
         trajsq .+= brownian((μ,σ),N).^2 ./ samples
