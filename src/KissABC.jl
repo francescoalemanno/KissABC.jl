@@ -205,33 +205,31 @@ function ABCDE(prior, simulation, data, distance, ϵ_target;
         ϵ_past=ϵ_current
         ϵ_current=max(ϵ_target,sum(extrema(Δs).*(1-α,α)))
         idx=(1:nparticles)[Δs.>ϵ_current]
-        θs,Δs=ABCDE_innerloop(prior,simulation,data, distance,ϵ_current,θs,Δs,idx,params,parallel)
+        θs,Δs=ABCDE_innerloop(prior, simulation, data, distance, ϵ_current, θs, Δs, idx, params, parallel)
         nsim+=length(idx)
         if verbose && ϵ_current!=ϵ_past
             @info "Finished run:" completion=1-sum(Δs.>ϵ_target)/nparticles num_simulations=nsim ϵ=ϵ_current
         end
     end
-    if verbose
-        @info "ABCDE Ended:" completion=1-sum(Δs.>ϵ_target)/nparticles num_simulations=nsim ϵ=ϵ_current
-        if mcmcsteps>0
-            @info "Performing additional MCMC-DE steps"
-        end
-    end
-    for i in 1:mcmcsteps
-        nθs,nΔs=ABCDE_innerloop(prior,simulation,data, distance,ϵ_current,θs[end-nparticles+1:end],Δs[end-nparticles+1:end],1:nparticles,params,parallel)
-        append!(θs,nθs)
-        append!(Δs,nΔs)
-        if verbose
-            @info "Finished run:" i remaining_steps=mcmcsteps-i
-        end
+    verbose && @info "ABCDE Ended:" completion=1-sum(Δs.>ϵ_target)/nparticles num_simulations=nsim ϵ=ϵ_current
+    converged = true
+    if ϵ_target < maximum(Δs)
+        verbose && @warn "Failed to reach target ϵ.\n   possible fix: increase maximum number of simulations"
+        converged = false
     end
 
-    if verbose
-        if ϵ_target < maximum(Δs)
-            @warn "Failed to reach target ϵ.\n   possible fix: increase maximum number of simulations"
+    if mcmcsteps>0 && converged
+        verbose && @info "Performing additional MCMC-DE steps at tolerance " ϵ_current
+        for i in 1:mcmcsteps
+            nθs,nΔs=ABCDE_innerloop(prior, simulation, data, distance, ϵ_current, θs[end-nparticles+1:end], Δs[end-nparticles+1:end], 1:nparticles, params, parallel)
+            append!(θs,nθs)
+            append!(Δs,nΔs)
+            if verbose
+                @info "Finished step:" i remaining_steps=mcmcsteps-i
+            end
         end
     end
-    θs,Δs
+    θs, Δs, converged
 end
 
 function ABC(prior, simulation, data, distance, α_target;
