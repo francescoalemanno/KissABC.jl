@@ -70,6 +70,10 @@ end
     stat=[sim(P[i],1) for i in eachindex(P)]
     @show mean(stat)
     @test abs((mean(stat)-5.5)/std(stat)) < 1
+    P,_ = ABCDE(pri,sim,5.5,dist,0.025,mcmcsteps=10)
+    stat=[sim(P[i],1) for i in eachindex(P)]
+    @show mean(stat)
+    @test abs((mean(stat)-5.5)/std(stat)) < 1
 end
 
 function brownian((μ,σ),N)
