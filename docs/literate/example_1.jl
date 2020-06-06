@@ -22,3 +22,5 @@ histogram(data)
 savefig("ex1_hist1.svg"); nothing # hide
 
 # ![ex1_hist1](ex1_hist1.svg)
+
+we can now try to infer all parameters using `KissABC`

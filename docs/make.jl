@@ -1,7 +1,8 @@
 using KissABC
 using Documenter
+using Literate
 
-include(joinpath(@__DIR__,"literate/buildmds.jl"))
+Literate.markdown(joinpath(@__DIR__,"literate","example_1.jl"),outdir=joinpath(@__DIR__,"src"))
 
 makedocs(;
     modules=[KissABC],
