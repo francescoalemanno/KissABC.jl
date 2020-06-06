@@ -1,4 +1,4 @@
-## A gaussian mixture model
+# # A gaussian mixture model
 # First of all we define our model,
 using KissABC
 
@@ -19,3 +19,6 @@ data=model((1.0,0.0,0.2,2.0,0.4),10000)
 
 using Plots
 histogram(data)
+savefig("ex1_hist1.png");
+
+#![ex1_hist1](ex1_hist1.png)
