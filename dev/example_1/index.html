@@ -13,31 +13,29 @@ function model(P,N)
 end
 
 data=model((1.0,0.0,0.2,2.0,0.4),10000)</code></pre><pre><code class="language-none">10000-element Array{Float64,1}:
-  0.15519172074826723
-  0.5872012882481722
-  0.9292744114195626
- -0.6212110502248448
- -1.9042267066882759
-  1.1770274883660965
-  1.9970839162847598
-  1.272195123935622
-  0.08613820820335945
-  1.0235862563893197
+  0.9121342979423321
+  0.9404962528629414
+  1.1529908414839052
+ -0.30586449377808206
+  1.0053270345739211
+  1.2280547523452394
+  2.2970848019972836
+  2.096060972797484
+  0.8280386284169148
+  1.0827897670082243
   ⋮
-  1.3914285361417784
-  0.8597695740912816
-  0.9051721693426816
-  1.1224482613000402
- -2.3470625956416327
-  0.9395437992980842
- -1.1748712072387513
-  0.9677010625770939
-  0.8424486202369694</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
-histogram(data)
-
-#![ex1_hist1](ex1_hist1.svg)</code></pre><pre><code class="language-none">/home/runner/.julia/packages/GR/Atztx/src/../deps/gr/bin/gksqt: error while loading shared libraries: libQt5Widgets.so.5: cannot open shared object file: No such file or directory
+ -1.0984169637644507
+  0.15388855776040705
+  0.8630644727189922
+  1.019832189447723
+  0.18498866662462174
+  0.73448970612129
+ -2.1783278184096884
+ -3.044228486690724
+  0.8981927238795705</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
+histogram(data)</code></pre><pre><code class="language-none">/home/runner/.julia/packages/GR/Atztx/src/../deps/gr/bin/gksqt: error while loading shared libraries: libQt5Widgets.so.5: cannot open shared object file: No such file or directory
 connect: Connection refused
 GKS: can&#39;t connect to GKS socket application
 
 GKS: Open failed in routine OPEN_WS
-GKS: GKS not in proper state. GKS must be either in the state WSOP or WSAC in routine ACTIVATE_WS</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Saturday 6 June 2020 15:14">Saturday 6 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+GKS: GKS not in proper state. GKS must be either in the state WSOP or WSAC in routine ACTIVATE_WS</code></pre><p><img src="../ex1_hist1.svg" alt="ex1_hist1"/></p><pre><code class="language-julia">we can now try to infer all parameters using `KissABC`</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Saturday 6 June 2020 16:07">Saturday 6 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
