@@ -21,4 +21,4 @@ using Plots
 histogram(data)
 savefig("ex1_hist1.svg"); nothing # hide
 
-#![ex1_hist1](ex1_hist1.svg)
+# ![ex1_hist1](ex1_hist1.svg)
