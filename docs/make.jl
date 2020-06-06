@@ -1,6 +1,8 @@
 using KissABC
 using Documenter
 
+include(joinpath(@__DIR__,"literate/buildmds.jl"))
+
 makedocs(;
     modules=[KissABC],
     authors="Francesco Alemanno <francescoalemanno710@gmail.com> and contributors",
@@ -13,6 +15,7 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Example" => "example_1.md",
     ],
 )
 

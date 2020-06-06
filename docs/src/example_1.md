@@ -1,5 +1,5 @@
 ```@meta
-EditURL = "<unknown>/example_1.jl"
+EditURL = "<unknown>/../literate/example_1.jl"
 ```
 
 ```@example example_1
@@ -35,3 +35,4 @@ hist(data,100)
 ---
 
 *This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
+
