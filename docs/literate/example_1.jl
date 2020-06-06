@@ -19,6 +19,6 @@ data=model((1.0,0.0,0.2,2.0,0.4),10000)
 
 using Plots
 histogram(data)
-savefig("ex1_hist1.png");
+savefig("ex1_hist1.svg"); nothing # hide
 
-#![ex1_hist1](ex1_hist1.png)
+#![ex1_hist1](ex1_hist1.svg)
