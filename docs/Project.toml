@@ -1,5 +1,5 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
-PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 KissABC = "9c9dad79-530a-4643-a18b-2704674d4108"

@@ -17,5 +17,5 @@ data=model((1.0,0.0,0.2,2.0,0.4),10000)
 
 # let's look at the data
 
-using PyPlot
-hist(data,100)
+using Plots
+histogram(data)
