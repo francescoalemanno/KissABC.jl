@@ -1,8 +1,9 @@
 using KissABC
 using Documenter
 using Literate
-
-Literate.markdown(joinpath(@__DIR__,"literate","example_1.jl"),outdir=joinpath(@__DIR__,"src"))
+using Plots
+@show joinpath(@__DIR__,"src")
+Literate.markdown(joinpath(@__DIR__,"literate","example_1.jl"),joinpath(@__DIR__,"src"),documenter=true)
 
 makedocs(;
     modules=[KissABC],
