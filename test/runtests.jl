@@ -129,10 +129,9 @@ function dist(s, s0)
  sqrt(sum(((s .- s0)./s).^2))
 end
 
-t1= @elapsed ABCSMCPR(Factored(Uniform(0,1), Uniform(0.5,1)), sim, [2.2, 0.4], dist, 0.01, nparticles=100, parallel=true,α=0.5)
-t2= @elapsed ABCDE(Factored(Uniform(0,1), Uniform(0.5,1)), sim, [2.2, 0.4], dist, 0.01, nparticles=100, parallel=true,α=0.5)
+t1= @elapsed ABCSMCPR(Factored(Uniform(0,1), Uniform(0.5,1)), sim, [2.2, 0.4], dist, 0.01, nparticles=100, parallel=true)
+t2= @elapsed ABCDE(Factored(Uniform(0,1), Uniform(0.5,1)), sim, [2.2, 0.4], dist, 0.01, nparticles=100, parallel=true)
 t1/t2
-
 =#
 
 #plotting stuff
@@ -171,7 +170,7 @@ function dilateextrema(X)
 end
 using PyPlot
 pygui(true)
-figure(figsize=(7.5,7.5).*(1,(sqrt(5)-1)/2),dpi=200)
+figure(figsize=1.5 .*(7.5,7.5).*(1,(sqrt(5)-1)/2),dpi=200)
 subplot(2,2,1)
 title("PRIOR")
 hist(μ_pr,50,histtype="step",label=L" π(μ)",density=true)

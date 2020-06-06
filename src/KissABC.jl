@@ -15,20 +15,18 @@ macro cthreads(condition::Symbol,loop) #does not work well because of #15276, bu
 end
 
 import Distributions.pdf, Random.rand
-
-struct MixedVariate <: VariateForm; end
 struct MixedSupport <: ValueSupport; end
 
 """
-    Factored{N} <: Distribution{MixedVariate, MixedSupport}
+    Factored{N} <: Distribution{Multivariate, MixedSupport}
 
-a `Distribution` type that can be used to combine multiple `Distribution`'s and sample from them.
+a `Distribution` type that can be used to combine multiple `UnivariateDistribution`'s and sample from them.
 
 Example: it can be used as `prior = Factored(Normal(0,1), Uniform(-1,1))`
 """
-struct Factored{N}<:Distribution{MixedVariate,MixedSupport}
-    p::NTuple{N,Distribution}
-    Factored(args::Distribution...) = new{length(args)}(args)
+struct Factored{N}<:Distribution{Multivariate,MixedSupport}
+    p::NTuple{N,UnivariateDistribution}
+    Factored(args::UnivariateDistribution...) = new{length(args)}(args)
 end
 """
     pdf(d::Factored, x) = begin
@@ -149,16 +147,18 @@ function ABCSMCPR(prior, simulation, data, distance, ϵ_target;
     θs,Δs
 end
 
-function deperturb(sample,r1,r2)
-    deperturb.(sample,r1,r2)
+function deperturb(prior::Factored,sample,r1,r2)
+    deperturb.(prior.p,sample,r1,r2)
 end
 
-function deperturb(sample::T,r1,r2) where T<:Number
-    p = (r1-r2)*(rand()*0.3+0.9) + 0.2*randn()*abs(r1-r2)
-    if T <: Integer
-        p=round(p,RoundNearest)
-    end
-    sample + T(p)
+function deperturb(prior::ContinuousUnivariateDistribution,sample,r1,r2)
+    p = (r1-r2)*(rand()*0.2+0.95) + 0.2*randn()*abs(r1-r2)
+    sample + p
+end
+
+function deperturb(prior::DiscreteUnivariateDistribution,sample::T,r1,r2) where T
+    p = (r1-r2)*(rand()*0.2+0.95) + randn()*max(0.2*abs(r1-r2),0.5)
+    sample + round(T,p)
 end
 
 function ABCDE_innerloop(prior,simulation,data, distance,ϵ,θs,Δs,idx,params,parallel)
@@ -175,7 +175,7 @@ function ABCDE_innerloop(prior,simulation,data, distance,ϵ,θs,Δs,idx,params,p
         while c==a || c==b
             c=rand(1:nparticles)
         end
-        θp=deperturb(θs[a],θs[b],θs[c])
+        θp=deperturb(prior,θs[a],θs[b],θs[c])
         w_prior=pdf(prior,θp)/pdf(prior,θs[i])
         w=min(1,w_prior)
         rand()>w && continue
@@ -258,7 +258,7 @@ export ABC, ABCSMCPR, ABCDE, Factored
 """
     compute_kernel_scales(prior::Distribution, V)
 
-Function whose purpose is to compute the characteristic scale of the perturbation
+Function for `ABCSMCPR` whose purpose is to compute the characteristic scale of the perturbation
 kernel appropriate for `prior` given the Vector `V` of parameters
 """
 compute_kernel_scales
@@ -266,7 +266,7 @@ compute_kernel_scales
 """
     kernel(prior::Distribution, c, scale)
 
-Function whose purpose is returning the appropriate `Distribution` to use as a perturbation kernel on sample `c` and characteristic `scale`
+Function for `ABCSMCPR` whose purpose is returning the appropriate `Distribution` to use as a perturbation kernel on sample `c` and characteristic `scale`
 
 # Arguments:
 - `prior`: prior distribution
@@ -278,14 +278,14 @@ kernel
 """
     perturb(prior::Distribution, scales, sample)
 
-Function whose purpose is perturbing `sample` according to the appropriate `kernel` for `prior` with characteristic `scales`.
+Function for `ABCSMCPR` whose purpose is perturbing `sample` according to the appropriate `kernel` for `prior` with characteristic `scales`.
 """
 perturb
 
 """
     kerneldensity(prior::Distribution, scales, s1, s2)
 
-Function whose purpose is returning the probability density of observing `s2` under the kernel centered on `s1` with scales given by `scales` and appropriate for `prior`.
+Function for `ABCSMCPR` whose purpose is returning the probability density of observing `s2` under the kernel centered on `s1` with scales given by `scales` and appropriate for `prior`.
 """
 kerneldensity
 
@@ -332,12 +332,14 @@ A sequential monte carlo algorithm inspired by differential evolution, work in p
 """
 ABCDE
 
-"""
-    deperturb(sample::T, r1::T, r2::T)
 
-Differential Evolution perturbation kernel, generalizing this interface is WIP
+"""
+    deperturb(prior::Distribution, sample, r1, r2)
+
+Function for `ABCDE` whose purpose is computing `sample + γ (r1 - r2) + ϵ` (the perturbation function of differential evolution) in a way suited to the prior.
 
 # Arguments:
+- `prior`
 - `sample`
 - `r1`
 - `r2`
