@@ -2,6 +2,7 @@ using KissABC
 using Documenter
 using Literate
 using Plots
+ENV["GKSwstype"] = "100"
 @show joinpath(@__DIR__,"src")
 Literate.markdown(joinpath(@__DIR__,"literate","example_1.jl"),joinpath(@__DIR__,"src"),documenter=true)
 Literate.markdown(joinpath(@__DIR__,"literate","index.jl"),joinpath(@__DIR__,"src"),documenter=true)
