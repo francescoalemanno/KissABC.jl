@@ -14,7 +14,7 @@ macro cthreads(condition::Symbol,loop) #does not work well because of #15276, bu
     end)
 end
 
-import Distributions.pdf, Random.rand
+import Distributions.pdf, Random.rand, Base.length
 struct MixedSupport <: ValueSupport; end
 
 """
@@ -41,6 +41,8 @@ pdf(d::Factored,x) = prod(i->pdf(d.p[i],x[i]),eachindex(x))
 function to sample one element from a `Factored` object
 """
 rand(rng::AbstractRNG,factoreddist::Factored) = rand.(Ref(rng),factoreddist.p)
+
+length(p::Factored) = sum(length.(p.p))
 
 function compute_kernel_scales(prior::Factored,V)
     l = length(V[1])
@@ -147,17 +149,17 @@ function ABCSMCPR(prior, simulation, data, distance, ϵ_target;
     θs,Δs
 end
 
-function deperturb(prior::Factored,sample,r1,r2)
-    deperturb.(prior.p,sample,r1,r2)
+function deperturb(prior::Factored,sample,r1,r2,γ)
+    deperturb.(prior.p,sample,r1,r2,γ)
 end
 
-function deperturb(prior::ContinuousUnivariateDistribution,sample,r1,r2)
-    p = (r1-r2)*(rand()*0.2+0.95) + 0.2*randn()*abs(r1-r2)
+function deperturb(prior::ContinuousUnivariateDistribution,sample,r1,r2,γ)
+    p = (r1-r2)*γ*(rand()*0.2+0.95) + 0.1*randn()*abs(r1-r2)
     sample + p
 end
 
-function deperturb(prior::DiscreteUnivariateDistribution,sample::T,r1,r2) where T
-    p = (r1-r2)*(rand()*0.2+0.95) + randn()*max(0.2*abs(r1-r2),0.5)
+function deperturb(prior::DiscreteUnivariateDistribution,sample::T,r1,r2,γ) where T
+    p = (r1-r2)*γ*(rand()*0.2+0.95) + randn()*max(0.1*abs(r1-r2),0.5)
     sample + round(T,p)
 end
 
@@ -165,6 +167,7 @@ function ABCDE_innerloop(prior,simulation,data, distance,ϵ,θs,Δs,idx,params,p
     nθs=copy(θs)
     nΔs=copy(Δs)
     nparticles=length(θs)
+    γ = 2.38/sqrt(2*length(prior))
     @cthreads parallel for i in idx
         a=rand(1:nparticles)
         b=a
@@ -175,7 +178,7 @@ function ABCDE_innerloop(prior,simulation,data, distance,ϵ,θs,Δs,idx,params,p
         while c==a || c==b
             c=rand(1:nparticles)
         end
-        θp=deperturb(prior,θs[a],θs[b],θs[c])
+        θp=deperturb(prior,θs[a],θs[b],θs[c],γ)
         w_prior=pdf(prior,θp)/pdf(prior,θs[i])
         w=min(1,w_prior)
         rand()>w && continue
@@ -334,7 +337,7 @@ ABCDE
 
 
 """
-    deperturb(prior::Distribution, sample, r1, r2)
+    deperturb(prior::Distribution, sample, r1, r2, γ)
 
 Function for `ABCDE` whose purpose is computing `sample + γ (r1 - r2) + ϵ` (the perturbation function of differential evolution) in a way suited to the prior.
 
