@@ -13,38 +13,33 @@ function model(P,N)
     R
 end</code></pre><pre><code class="language-none">model (generic function with 1 method)</code></pre><p>Let&#39;s use the model to generate some data, this data will constitute our dataset</p><pre><code class="language-julia">parameters = (1.0, 0.0, 0.2, 2.0, 0.4)
 data=model(parameters,5000)</code></pre><pre><code class="language-none">5000-element Array{Float64,1}:
-  1.1841164127525154
-  0.6252435371088407
- -0.1349358307814378
-  2.3309101125713005
-  1.4380518984102713
-  1.2866224207736165
-  1.1029983641006982
-  0.9572848893280819
-  0.9776238844618476
-  2.284760054042243
+  1.1652762476607117
+  0.014906371670944994
+  1.0659989459470183
+ -1.5341685187019622
+  0.9661994963693872
+ -0.5229884089190063
+  0.9726404280460146
+  0.6238319567128432
+ -4.187635655031168
+  1.03134190453378
   ⋮
-  1.6530344920485267
-  1.145849663983623
-  1.3403507769082268
- -0.5766480950002685
-  1.2035722612680884
-  1.1148892672118689
-  1.0017572304021556
- -2.186946606626917
-  0.8300818377279162</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
-histogram(data)</code></pre><pre><code class="language-none">/home/runner/.julia/packages/GR/Atztx/src/../deps/gr/bin/gksqt: error while loading shared libraries: libQt5Widgets.so.5: cannot open shared object file: No such file or directory
-connect: Connection refused
-GKS: can&#39;t connect to GKS socket application
-
-GKS: Open failed in routine OPEN_WS
-GKS: GKS not in proper state. GKS must be either in the state WSOP or WSAC in routine ACTIVATE_WS</code></pre><p><img src="../ex1_hist1.svg" alt="ex1_hist1"/></p><p>we can now try to infer all parameters using <code>KissABC</code>, first of all we need to define a reasonable prior for our model</p><pre><code class="language-julia">prior=Factored(
+ -1.225393367057255
+  0.9318686326566562
+  0.0027346904039798063
+ -2.891354101773463
+ -1.2800638179548753
+ -2.875053877139599
+  3.8313346698118305
+  0.6403628338932551
+  2.4193697068364926</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
+histogram(data)</code></pre><p><img src="../ex1_hist1.svg" alt="ex1_hist1"/></p><p>we can now try to infer all parameters using <code>KissABC</code>, first of all we need to define a reasonable prior for our model</p><pre><code class="language-julia">prior=Factored(
             Uniform(0,3), # there is surely a peak between 0 and 3
             Uniform(-2,2), #there is a smeared distribution centered around 0
             Uniform(0,1), # the peak has surely a width below 1
             Uniform(0,4), # the smeared distribution surely has a width less than 4
             Beta(4,4) # the number of total events from both distributions look about the same, so we will favor 0.5 just a bit
-        );</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre><code class="language-none">(2.794128935965286, -0.2907328043468427, 0.3739933314241952, 0.6653495957389257, 0.7713214419516992)</code></pre><p>now we need a distance function to compare datasets, this is possibly the worst distance we could use, but it will work out anyway</p><pre><code class="language-julia">function D(x,y)
+        );</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre><code class="language-none">(1.0669012235040358, 0.037460164586881284, 0.7966881527323904, 0.18145067776168222, 0.6044139614397382)</code></pre><p>now we need a distance function to compare datasets, this is possibly the worst distance we could use, but it will work out anyway</p><pre><code class="language-julia">function D(x,y)
     r=0:0.01:1
     sum(abs2,quantile.(Ref(x),r).-quantile.(Ref(y),r))/length(r)
 end</code></pre><pre><code class="language-none">D (generic function with 1 method)</code></pre><p>we can now run ABCDE to get the posterior distribution of our parameters given the dateset <code>data</code></p><pre><code class="language-julia">res,Δ=ABCDE(prior,model,data,D,0.02,params=5000,parallel=true,verbose=false);</code></pre><p>let&#39;s see the median and 95% confidence interval for the inferred parameters and let&#39;s compare them with the true values</p><pre><code class="language-julia">function getstats(P,V)
@@ -60,8 +55,8 @@ stats=getstats.((:μ_1, :μ_2, :σ_1, :σ_2, :prob),[getindex.(res,i) for i in 1
 
 for is in eachindex(stats)
     println(parameters[is], &quot; → &quot;, stats[is])
-end</code></pre><pre><code class="language-none">1.0 → (param = :μ_1, median = 0.9874386262608158, lowerbound = 0.8584614501730787, upperbound = 1.1380897041615547)
-0.0 → (param = :μ_2, median = 0.004712503251219233, lowerbound = -0.13311292139512637, upperbound = 0.1338610287896059)
-0.2 → (param = :σ_1, median = 0.23378010121278778, lowerbound = 0.0911558259420928, upperbound = 0.42658136204602537)
-2.0 → (param = :σ_2, median = 1.9748910252975493, lowerbound = 1.873921621920067, upperbound = 2.103470828232231)
-0.4 → (param = :prob, median = 0.3885821131512746, lowerbound = 0.32858795334801083, upperbound = 0.4404638151455708)</code></pre><p>we can see that the true values lie inside the confidence interval.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Sunday 7 June 2020 06:38">Sunday 7 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><pre><code class="language-none">1.0 → (param = :μ_1, median = 0.951524430467054, lowerbound = 0.8372094762115357, upperbound = 1.090268204576953)
+0.0 → (param = :μ_2, median = -0.042586552360141854, lowerbound = -0.17046403134993351, upperbound = 0.10477913574677046)
+0.2 → (param = :σ_1, median = 0.21687633835126147, lowerbound = 0.06245631601520477, upperbound = 0.38776825537422616)
+2.0 → (param = :σ_2, median = 2.0519249345054464, lowerbound = 1.9435098058509397, upperbound = 2.1582831376823415)
+0.4 → (param = :prob, median = 0.4042461235483699, lowerbound = 0.3558659669196444, upperbound = 0.44531726408640654)</code></pre><p>we can see that the true values lie inside the confidence interval.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Sunday 7 June 2020 07:51">Sunday 7 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
