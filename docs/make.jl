@@ -4,6 +4,7 @@ using Literate
 using Plots
 @show joinpath(@__DIR__,"src")
 Literate.markdown(joinpath(@__DIR__,"literate","example_1.jl"),joinpath(@__DIR__,"src"),documenter=true)
+Literate.markdown(joinpath(@__DIR__,"literate","index.jl"),joinpath(@__DIR__,"src"),documenter=true)
 
 makedocs(;
     modules=[KissABC],
@@ -16,8 +17,9 @@ makedocs(;
         assets=String[],
     ),
     pages=[
-        "Home" => "index.md",
+        "Basic Usage" => "index.md",
         "Example: Gaussian Mixture" => "example_1.md",
+        "Reference" => "reference.md",
     ],
 )
 
