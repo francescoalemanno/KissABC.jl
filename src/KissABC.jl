@@ -160,7 +160,12 @@ end
 
 function deperturb(prior::DiscreteUnivariateDistribution,sample::T,r1,r2,γ) where T
     p = (r1-r2)*γ*(rand()*0.2+0.95) + randn()*max(0.1*abs(r1-r2),0.5)
-    sample + round(T,p)
+    sp=sign(p)
+    ap=abs(p)
+    intp=floor(ap)
+    floatp=ap-intp
+    pprob=(intp+ifelse(rand()<floatp,oftype(p,0),oftype(p,1)))*sp
+    sample + round(T,pprob)
 end
 
 function ABCDE_innerloop(prior,simulation,data, distance,ϵ,θs,Δs,idx,params,parallel)
@@ -214,9 +219,10 @@ function ABCDE(prior, simulation, data, distance, ϵ_target;
             @info "Finished run:" completion=1-sum(Δs.>ϵ_target)/nparticles num_simulations=nsim ϵ=ϵ_current
         end
     end
+    ϵ_current=maximum(Δs)
     verbose && @info "ABCDE Ended:" completion=1-sum(Δs.>ϵ_target)/nparticles num_simulations=nsim ϵ=ϵ_current
     converged = true
-    if ϵ_target < maximum(Δs)
+    if ϵ_target < ϵ_current
         verbose && @warn "Failed to reach target ϵ.\n   possible fix: increase maximum number of simulations"
         converged = false
     end
