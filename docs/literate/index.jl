@@ -35,26 +35,29 @@ function ksdist(x,y)
     maximum(abs.(p1.(r)-p2.(r)))
 end
 
-# Now we are all set, we can use `ABCDE` which is an SMC algorithm, with adaptive proposal, to infer μ and σ
+# Now we are all set, we can use `ABCDE` which is sequential Monte Carlo algorithm with an adaptive proposal, to simulate the posterior distribution for this model, inferring μ and σ
 
 res,Δ = ABCDE(prior, sim, tdata, ksdist, 0.1, nparticles=200,parallel=true, verbose=false);
 
-# In any case we chose a tolerance on distances equal to `0.1`, a number of simulated particles equal to `200`, we enabled Threaded parallelism, and ofcourse the first four parameters are the ingredients we set in the previous steps, the simulated posterior results are in `res`, while in `Δ` we can find the distances calculated for each sample.
-# We can now extract the results:
+# the parameters we chose are: a tolerance on distances equal to `0.1`, a number of simulated particles equal to `200`, we enabled Threaded parallelism, and ofcourse the first four parameters are the ingredients we set in the previous steps, the simulated posterior results are in `res`, while in `Δ` we can find the distances calculated for each sample.
+# We can now extract the inference results:
 
-prsample=[rand(prior) for i in 1:5000] #some samples from the prior for comparison
+prsample=[rand(prior) for i in 1:2000] #some samples from the prior for comparison
 μ_pr=getindex.(prsample,1) # μ samples from the prior
 σ_pr=getindex.(prsample,2) # σ samples from the prior
 μ_p=getindex.(res,1) # μ samples from the posterior
-σ_p=getindex.(res,2) # σ samples from the posterior
+σ_p=getindex.(res,2); # σ samples from the posterior
 
 # and plotting prior and posterior side by side we get:
+
 using Plots
-a=histogram(μ_pr,xlims=(1,3),xlabel="μ_prior",leg=false);
-b=histogram(σ_pr,xlims=(0,0.3),xlabel="σ_prior",leg=false);
-ap=histogram(μ_p,xlims=(1,3),xlabel="μ_posterior",leg=false);
-bp=histogram(σ_p,xlims=(0,0.3),xlabel="σ_posterior",leg=false);
-plot(a,b,ap,bp)
+a  = stephist(μ_pr,xlims=(1,3),xlabel="μ prior",leg=false,lw=2,normalize=true)
+b  = stephist(σ_pr,xlims=(0,0.3),xlabel="σ prior",leg=false,lw=2,normalize=true)
+ap = stephist(μ_p, xlims=(1,3),xlabel="μ posterior",leg=false,lw=2,normalize=true)
+bp = stephist(σ_p, xlims=(0,0.3),xlabel="σ posterior",leg=false,lw=2,normalize=true)
+plot(a,ap,b,bp)
 savefig("inference.svg"); nothing # hide
+
 # ![inference_plot](inference.svg)
+#
 # we can see that the algorithm has correctly inferred both parameters, this exact recipe will work for much more complicated models and simulations, with some tuning.
