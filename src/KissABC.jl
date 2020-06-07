@@ -134,7 +134,7 @@ function ABCSMCPR(prior, simulation, data, distance, ϵ_target;
         current_accepted=(numaccepted[]-past_accepted)
         acceptance_rate=(current_accepted+0.1)/(Rt*length(idx_dead)+0.2)
         if verbose
-            @info  "Finished run" ϵ_current acceptance_rate current_sim Rt early_rejected=1-current_sim/(Rt*length(idx_dead))
+            @info  "Finished run" ϵ_current acceptance_rate simulations=numsim[] Rt early_rejected=1-current_sim/(Rt*length(idx_dead))
         end
         Rt=ceil(Int,log(c)/log(1.0-acceptance_rate))
 
@@ -154,17 +154,17 @@ function deperturb(prior::Factored,sample,r1,r2,γ)
 end
 
 function deperturb(prior::ContinuousUnivariateDistribution,sample,r1,r2,γ)
-    p = (r1-r2)*γ*(rand()*0.2+0.95) + 0.1*randn()*abs(r1-r2)
+    p = (r1-r2)*γ*(rand()*0.2+0.9) + 0.05*randn()*abs(r1-r2)
     sample + p
 end
 
 function deperturb(prior::DiscreteUnivariateDistribution,sample::T,r1,r2,γ) where T
-    p = (r1-r2)*γ*(rand()*0.2+0.95) + randn()*max(0.1*abs(r1-r2),0.5)
+    p = (r1-r2)*γ*(rand()*0.2+0.9) + randn()*max(0.05*abs(r1-r2),0.5)
     sp=sign(p)
     ap=abs(p)
     intp=floor(ap)
     floatp=ap-intp
-    pprob=(intp+ifelse(rand()<floatp,oftype(p,0),oftype(p,1)))*sp
+    pprob=(intp+ifelse(rand()>floatp,oftype(p,0),oftype(p,1)))*sp
     sample + round(T,pprob)
 end
 
