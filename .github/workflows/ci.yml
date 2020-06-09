@@ -11,6 +11,7 @@ jobs:
         version:
           - '1.1'
           - '1.4'
+          - 'nightly'
         os:
           - ubuntu-latest
           - macOS-latest
