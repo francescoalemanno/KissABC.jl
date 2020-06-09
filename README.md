@@ -44,15 +44,21 @@ function ksdist(x,y)
     maximum(abs.(p1.(r)-p2.(r)))
 end
 ```
-Now we are all set, we can use `ABCSMCPR` which is sequential Monte Carlo algorithm to simulate the posterior distribution for this model
+Now we are all set, first we define an `ABCplan` via
+
 ```julia
-res,Δ = ABCSMCPR(prior, sim, tdata, ksdist, 0.1, nparticles=200,parallel=true)
+plan=ABCplan(prior, sim, tdata, ksdist)
+```
+where ofcourse the four parameters are the ingredients we defined earlier in the previous steps, and then
+we can use `ABCSMCPR` which is sequential Monte Carlo algorithm to simulate the posterior distribution for this model
+```julia
+res,Δ = ABCSMCPR(plan, 0.1, nparticles=200,parallel=true)
 ```
 Or, we can use `ABCDE` which is still an SMC algorithm, but with an adaptive proposal, which is much more efficient
 ```julia
-res,Δ = ABCDE(prior, sim, tdata, ksdist, 0.1, nparticles=200,parallel=true)
+res,Δ = ABCDE(plan, 0.1, nparticles=200,parallel=true)
 ```
-In any case we chose a tolerance on distances equal to `0.1`, a number of simulated particles equal to `200`, we enabled Threaded parallelism, and ofcourse the first four parameters are the ingredients we set in the previous steps, the simulated posterior results are in `res`, while in `Δ` we can find the distances calculated for each sample.
+In any case we chose a tolerance on distances equal to `0.1`, a number of simulated particles equal to `200`, we enabled Threaded parallelism, and the simulated posterior results are in `res`, while in `Δ` we can find the distances calculated for each sample.
 We can now extract the results:
 ```julia
 prsample=[rand(prior) for i in 1:5000] #some samples from the prior for comparison

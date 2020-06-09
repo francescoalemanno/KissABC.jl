@@ -45,7 +45,9 @@ function D(x,y)
 end
 
 # we can now run ABCDE to get the posterior distribution of our parameters given the dateset `data`
-res,Δ=ABCDE(prior,model,data,D,0.02,params=5000,parallel=true,verbose=false);
+
+plan=ABCplan(prior,model,data,D)
+res,Δ=ABCDE(plan,0.02,params=5000,parallel=true,verbose=false);
 
 # let's see the median and 95% confidence interval for the inferred parameters and let's compare them with the true values
 function getstats(P,V)
