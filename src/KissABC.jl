@@ -6,7 +6,7 @@ using Random
 
 
 """
-    ABCplan(prior, simulation, data, distance)
+    ABCplan(prior, simulation, data, distance; params=())
 
 Builds a type `ABCplan` which holds
 
@@ -15,13 +15,15 @@ Builds a type `ABCplan` which holds
 - `simulation`: simulation function `sim(prior_sample, constants) -> data` that accepts a prior sample and the `params` constant and returns a simulated dataset
 - `data`: target dataset which must be compared with simulated datasets
 - `distance`: distance function `dist(x,y)` that return the distance (a scalar value) between `x` and `y`
+- `params`: an optional set of constants to be passed as second argument to the simulation function
 """
-struct ABCplan{T1,T2,T3,T4}
+struct ABCplan{T1,T2,T3,T4,T5}
     prior::T1
     simulation::T2
     data::T3
     distance::T4
-    ABCplan(prior::T1,simulation::T2,data::T3,distance::T4) where {T1,T2,T3,T4} = new{T1,T2,T3,T4}(prior,simulation,data,distance)
+    params::T5
+    ABCplan(prior::T1,simulation::T2,data::T3,distance::T4;params::T5=()) where {T1,T2,T3,T4,T5} = new{T1,T2,T3,T4,T5}(prior,simulation,data,distance,params)
 end
 
 macro cthreads(condition::Symbol,loop) #does not work well because of #15276, but seems to work on Julia v0.7
@@ -134,16 +136,16 @@ function sample_plan(plan::ABCplan,nparticles,parallel)
     θs=[rand(plan.prior) for i in 1:nparticles]
     Δs=fill(plan.distance(plan.data, plan.data),nparticles)
     @cthreads parallel for i in 1:nparticles
-        x=plan.simulation(θs[i],params)
+        x=plan.simulation(θs[i],plan.params)
         Δs[i]=plan.distance(x,plan.data)
     end
     θs,Δs
 end
 
 function ABCSMCPR(plan::ABCplan, ϵ_target;
-                  nparticles=100, maxsimpp=1e3, α=0.3, c=0.01, parallel=false, params=(), verbose=true)
+                  nparticles=100, maxsimpp=1e3, α=0.3, c=0.01, parallel=false, verbose=true)
     # https://doi.org/10.1111/j.1541-0420.2010.01410.x
-    @extract_params plan prior distance simulation data
+    @extract_params plan prior distance simulation data params
     Nα=ceil(Int,α*nparticles)
     @assert 2<Nα<nparticles-1
     maxsimulations=nparticles*maxsimpp
@@ -220,8 +222,8 @@ function deperturb(prior::DiscreteUnivariateDistribution,sample::T,r1,r2,γ) whe
     sample + round(T,pprob)
 end
 
-function ABCDE_innerloop(plan::ABCplan,ϵ,θs,Δs,idx,params,parallel)
-    @extract_params plan prior distance simulation data
+function ABCDE_innerloop(plan::ABCplan,ϵ,θs,Δs,idx,parallel)
+    @extract_params plan prior distance simulation data params
     nθs=copy(θs)
     nΔs=copy(Δs)
     nparticles=length(θs)
@@ -251,9 +253,9 @@ function ABCDE_innerloop(plan::ABCplan,ϵ,θs,Δs,idx,params,parallel)
 end
 
 function ABCDE(plan::ABCplan, ϵ_target;
-                  nparticles=100, maxsimpp=200, parallel=false, α=1/3, mcmcsteps=0, params=(), verbose=true)
+                  nparticles=100, maxsimpp=200, parallel=false, α=1/3, mcmcsteps=0, verbose=true)
     # simpler version of https://doi.org/10.1016/j.jmp.2012.06.004
-    @extract_params plan prior distance simulation data
+    @extract_params plan prior distance simulation data params
     @assert 0<α<1 "α must be strictly between 0 and 1."
     θs,Δs=sample_plan(plan,nparticles,parallel)
     nsim=nparticles
@@ -262,7 +264,7 @@ function ABCDE(plan::ABCplan, ϵ_target;
         ϵ_past=ϵ_current
         ϵ_current=max(ϵ_target,sum(extrema(Δs).*(1-α,α)))
         idx=(1:nparticles)[Δs.>ϵ_current]
-        θs,Δs=ABCDE_innerloop(plan, ϵ_current, θs, Δs, idx, params, parallel)
+        θs,Δs=ABCDE_innerloop(plan, ϵ_current, θs, Δs, idx, parallel)
         nsim+=length(idx)
         if verbose && ϵ_current!=ϵ_past
             @info "Finished run:" completion=1-sum(Δs.>ϵ_target)/nparticles num_simulations=nsim ϵ=ϵ_current
@@ -279,7 +281,7 @@ function ABCDE(plan::ABCplan, ϵ_target;
     if mcmcsteps>0 && converged
         verbose && @info "Performing additional MCMC-DE steps at tolerance " ϵ_current
         for i in 1:mcmcsteps
-            nθs,nΔs=ABCDE_innerloop(plan, ϵ_current, θs[end-nparticles+1:end], Δs[end-nparticles+1:end], 1:nparticles, params, parallel)
+            nθs,nΔs=ABCDE_innerloop(plan, ϵ_current, θs[end-nparticles+1:end], Δs[end-nparticles+1:end], 1:nparticles, parallel)
             append!(θs,nθs)
             append!(Δs,nΔs)
             if verbose
@@ -291,8 +293,8 @@ function ABCDE(plan::ABCplan, ϵ_target;
 end
 
 function ABC(plan::ABCplan, α_target;
-             nparticles=100, params=(), parallel=false)
-    @extract_params plan prior distance simulation data
+             nparticles=100, parallel=false)
+    @extract_params plan prior distance simulation data params
     @assert 0<α_target<=1 "α_target is the acceptance rate, and must be properly set between 0 - 1."
     simparticles=ceil(Int,nparticles/α_target)
     @show simparticles
@@ -353,7 +355,6 @@ Sequential Monte Carlo algorithm (Drovandi et al. 2011, https://doi.org/10.1111/
 - `α`: proportion of particles to retain at every iteration of SMC, other particles are resampled
 - `c`: probability that a sample will not be updated during one iteration of SMC
 - `parallel`: when set to `true` multithreaded parallelism is enabled
-- `params`: an optional set of constants to be passed as second argument to the simulation function
 - `verbose`: when set to `true` verbosity is enabled
 """
 ABCSMCPR
@@ -372,7 +373,6 @@ A sequential monte carlo algorithm inspired by differential evolution, work in p
 - `maxsimpp`: average maximum number of simulations per particle
 - `mcmcsteps`: option to sample more than `1` population of `nparticles`, the end population will contain `(1 + mcmcsteps) * nparticles` total particles
 - `parallel`: when set to `true` multithreaded parallelism is enabled
-- `params`: an optional set of constants to be passed as second argument to the simulation function
 - `verbose`: when set to `true` verbosity is enabled
 """
 ABCDE
@@ -401,7 +401,6 @@ Classical ABC rejection algorithm.
 - `plan`: a plan built using the function ABCplan.
 - `α_target`: target acceptance rate for ABC rejection algorithm, `nparticles/α` will be sampled and only the best `nparticles` will be retained.
 - `nparticles`:  number of samples from the approximate posterior that will be returned
-- `params`: an optional set of constants to be passed as second argument to the simulation function
 - `parallel`: when set to `true` multithreaded parallelism is enabled
 """
 ABC
