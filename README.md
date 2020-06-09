@@ -47,7 +47,7 @@ end
 Now we are all set, first we define an `ABCplan` via
 
 ```julia
-plan=ABCplan(prior, sim, tdata, ksdist)
+plan = ABCplan(prior, sim, tdata, ksdist)
 ```
 where ofcourse the four parameters are the ingredients we defined earlier in the previous steps, and then
 we can use `ABCSMCPR` which is sequential Monte Carlo algorithm to simulate the posterior distribution for this model
