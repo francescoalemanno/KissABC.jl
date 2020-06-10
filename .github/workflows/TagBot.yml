@@ -2,6 +2,8 @@ name: TagBot
 on:
   schedule:
     - cron: 0 0 * * *
+  issues: # I have added this line
+    types: [opened, closed, reopened] # I have added this line
 jobs:
   TagBot:
     runs-on: ubuntu-latest
