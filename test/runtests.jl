@@ -61,6 +61,16 @@ end
     @test abs((mean(P)-1/sqrt(2))/0.02)<3
 end
 
+@testset "Normal dist -> Normal Dist" begin
+    pri=Normal(0,1)
+    data=ones(1000)
+    sim(μ,other)=randn(length(data)).+μ
+    dist(x,y)=abs(mean(x)-mean(y))
+    plan=ABCplan(pri,sim,data,dist)
+    res,Δ=ABCDE(plan,0.25/sqrt(length(data)),maxsimpp=Inf,verbose=false)
+    @test abs((mean(res)-1)/std(res)*sqrt(length(data)))<2.4
+end
+
 @testset "Normal dist + Uniform Distr -> inference" begin
     pri=Factored(Normal(1,0.5),DiscreteUniform(1,10))
     sim((n,du),params)=(n*n+du)*(n+randn()*0.1)
@@ -100,27 +110,27 @@ function brownianrms((μ,σ),N,samples=200)
     sqrt.(sum(trajsq,dims=1)[1,:])
 end
 
-@testset "Inference on skewed brownian model" begin
+@testset "Inference on drifted Wiener Process" begin
     tdata=brownianrms((0.5,2.0),30,10000)
     prior=Factored(Uniform(0,1),Uniform(0,4))
     dist(x,y)=sum(abs,x.-y)/length(x)
     plan=ABCplan(prior,brownianrms,tdata,dist,params=30)
-    res,w=ABCSMCPR(plan,0.5,parallel=true)
+    res,w=ABCSMCPR(plan,0.4,parallel=true)
     @test abs((mean(getindex.(res,2))-2)/std(getindex.(res,2)))<4/sqrt(length(w))
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
     @show mean(getindex.(res,1)),std(getindex.(res,1))
     @show mean(getindex.(res,2)),std(getindex.(res,2))
-    res,w=ABCDE(plan,0.5,parallel=true)
+    res,w=ABCDE(plan,0.4,parallel=true)
     @test abs((mean(getindex.(res,2))-2)/std(getindex.(res,2)))<4/sqrt(length(w))
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
     @show mean(getindex.(res,1)),std(getindex.(res,1))
     @show mean(getindex.(res,2)),std(getindex.(res,2))
-    res,w,ϵ=ABC(plan,0.03,parallel=true)
+    res,w,ϵ=ABC(plan,0.01,parallel=true)
     @show ϵ
     @show mean(getindex.(res,1)),std(getindex.(res,1))
     @show mean(getindex.(res,2)),std(getindex.(res,2))
-    @test abs((mean(getindex.(res,2))-2)/std(getindex.(res,2)))<7/sqrt(length(w))
-    @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<7/sqrt(length(w))
+    @test abs((mean(getindex.(res,2))-2)/std(getindex.(res,2)))<4/sqrt(length(w))
+    @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
 end
 
 #benchmark
