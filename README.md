@@ -2,6 +2,7 @@
 ![CI](https://github.com/francescoalemanno/KissABC.jl/workflows/CI/badge.svg?branch=master)
 [![Coverage](https://codecov.io/gh/francescoalemanno/KissABC.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/francescoalemanno/KissABC.jl)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://francescoalemanno.github.io/KissABC.jl/dev)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://francescoalemanno.github.io/KissABC.jl/stable/)
 
 Table of Contents
 =================
