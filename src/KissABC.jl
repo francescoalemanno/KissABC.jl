@@ -365,7 +365,7 @@ Function for `ABCSMCPR` whose purpose is returning the probability density of ob
 kerneldensity
 
 """
-    ABCSMCPR(prior, simulation, data, distance, ϵ_target; nparticles = 100, maxsimpp = 1000.0, α = 0.3, c = 0.01, parallel = false, params = (), verbose = true)
+    ABCSMCPR(plan, ϵ_target; nparticles = 100, maxsimpp = 1000.0, α = 0.3, c = 0.01, parallel = false, verbose = true)
 
 Sequential Monte Carlo algorithm (Drovandi et al. 2011, https://doi.org/10.1111/j.1541-0420.2010.01410.x).
 
@@ -383,7 +383,7 @@ ABCSMCPR
 
 
 """
-    ABCDE(prior, simulation, data, distance, ϵ_target; α=1/3, nparticles = 100, maxsimpp = 200, mcmcsteps=0, parallel = false, params = (), verbose = true)
+    ABCDE(plan, ϵ_target; α=1/3, nparticles = 100, maxsimpp = 200, mcmcsteps=0, parallel = false, verbose = true)
 
 A sequential monte carlo algorithm inspired by differential evolution, work in progress, very efficient (simpler version of B.M.Turner 2012, https://doi.org/10.1016/j.jmp.2012.06.004)
 
@@ -415,7 +415,7 @@ deperturb
 
 
 """
-    ABC(prior, simulation, data, distance, α_target; nparticles = 100, params = (), parallel = false)
+    ABC(plan, α_target; nparticles = 100, parallel = false)
 
 Classical ABC rejection algorithm.
 
