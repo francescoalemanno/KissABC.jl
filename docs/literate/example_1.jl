@@ -38,31 +38,34 @@ prior=Factored(
 
 # let's look at a sample from the prior, to see that it works
 rand(prior)
-# now we need a distance function to compare datasets, this is possibly the worst distance we could use, but it will work out anyway
+# now we need a distance function to compare datasets, this is not the best distance we could use, but it will work out anyway
 function D(x,y)
-    r=0:0.01:1
-    sum(abs2,quantile.(Ref(x),r).-quantile.(Ref(y),r))/length(r)
+    r=LinRange(0,1,length(x)+length(y))
+    mean(abs,quantile(x,r).-quantile(y,r))
 end
 
 # we can now run ABCDE to get the posterior distribution of our parameters given the dateset `data`
-
 plan=ABCplan(prior,model,data,D,params=5000)
-res,Δ=ABCDE(plan,0.02,parallel=true,verbose=false);
+res,Δ,converged=ABCDE(plan,0.05,parallel=true,verbose=false);
+
+# Has it converged?
+converged
 
 # let's see the median and 95% confidence interval for the inferred parameters and let's compare them with the true values
-function getstats(P,V)
+function getstats(V)
     (
-        param=P,
         median=median(V),
         lowerbound=quantile(V,0.05),
         upperbound=quantile(V,0.95)
     )
 end
 
-stats=getstats.((:μ_1, :μ_2, :σ_1, :σ_2, :prob),[getindex.(res,i) for i in 1:5])
+labels=(:μ_1, :μ_2, :σ_1, :σ_2, :prob)
+P=[getindex.(res,i) for i in 1:5]
+stats=getstats.(P)
 
 for is in eachindex(stats)
-    println(parameters[is], " → ", stats[is])
+    println(labels[is], " ≡ " ,parameters[is], " → ", stats[is])
 end
 
 # we can see that the true values lie inside the confidence interval.
