@@ -13,33 +13,33 @@ function model(P,N)
     R
 end</code></pre><pre><code class="language-none">model (generic function with 1 method)</code></pre><p>Let&#39;s use the model to generate some data, this data will constitute our dataset</p><pre><code class="language-julia">parameters = (1.0, 0.0, 0.2, 2.0, 0.4)
 data=model(parameters,5000)</code></pre><pre><code class="language-none">5000-element Array{Float64,1}:
-  1.3392671031424388
-  1.6210352489748816
-  0.9680231721191083
- -0.6962644347876422
-  0.0827530762961092
- -0.16924354110421969
- -2.4771921478823784
- -0.7740950002497322
- -0.2867511604662021
-  3.298227421277811
+  0.9540420729848279
+ -0.543535685209372
+  1.326127969016534
+ -0.8828947457059468
+  1.2190754964013295
+ -0.49861089853526935
+ -0.20820604785220143
+ -0.7811795575298548
+  1.004593869780523
+  0.7126067303724519
   ⋮
- -1.1929888631612082
-  1.0466377658995967
- -1.2587053947472766
-  1.0545836580912664
-  0.24452498520805607
-  0.17597860693374626
-  1.0530600578307858
-  1.1972929456488814
-  0.9357471490016198</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
+  0.9635990974769366
+  1.3847141120896618
+ -1.3132435909815878
+ -1.026792267566777
+  0.9375853487924876
+  0.9768821974325227
+ -0.3978249671979467
+  0.9796927200304062
+ -1.6605178201331396</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
 histogram(data)</code></pre><p><img src="../ex1_hist1.svg" alt="ex1_hist1"/></p><p>we can now try to infer all parameters using <code>KissABC</code>, first of all we need to define a reasonable prior for our model</p><pre><code class="language-julia">prior=Factored(
             Uniform(0,3), # there is surely a peak between 0 and 3
             Uniform(-2,2), #there is a smeared distribution centered around 0
             Uniform(0,1), # the peak has surely a width below 1
             Uniform(0,4), # the smeared distribution surely has a width less than 4
             Beta(4,4) # the number of total events from both distributions look about the same, so we will favor 0.5 just a bit
-        );</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre><code class="language-none">(0.6926828735152266, 0.49499094004021327, 0.05342528779262534, 1.2175883315451221, 0.5152629959433821)</code></pre><p>now we need a distance function to compare datasets, this is possibly the worst distance we could use, but it will work out anyway</p><pre><code class="language-julia">function D(x,y)
+        );</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre><code class="language-none">(2.955584564409755, -0.17433491050594085, 0.8130960800400422, 1.4113851667591764, 0.6558668809971674)</code></pre><p>now we need a distance function to compare datasets, this is possibly the worst distance we could use, but it will work out anyway</p><pre><code class="language-julia">function D(x,y)
     r=0:0.01:1
     sum(abs2,quantile.(Ref(x),r).-quantile.(Ref(y),r))/length(r)
 end</code></pre><pre><code class="language-none">D (generic function with 1 method)</code></pre><p>we can now run ABCDE to get the posterior distribution of our parameters given the dateset <code>data</code></p><pre><code class="language-julia">plan=ABCplan(prior,model,data,D,params=5000)
@@ -56,8 +56,8 @@ stats=getstats.((:μ_1, :μ_2, :σ_1, :σ_2, :prob),[getindex.(res,i) for i in 1
 
 for is in eachindex(stats)
     println(parameters[is], &quot; → &quot;, stats[is])
-end</code></pre><pre><code class="language-none">1.0 → (param = :μ_1, median = 0.9798484927994096, lowerbound = 0.8666229724413265, upperbound = 1.1095518079229791)
-0.0 → (param = :μ_2, median = -0.03270763028983068, lowerbound = -0.18218156788980625, upperbound = 0.1453453989069853)
-0.2 → (param = :σ_1, median = 0.2810016367633614, lowerbound = 0.12040544103464337, upperbound = 0.44445460199019315)
-2.0 → (param = :σ_2, median = 2.0462080560601534, lowerbound = 1.9477945086567001, upperbound = 2.1660233045115005)
-0.4 → (param = :prob, median = 0.43457400514438216, lowerbound = 0.37345851602433844, upperbound = 0.4958836977291951)</code></pre><p>we can see that the true values lie inside the confidence interval.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Basic Usage</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 10 June 2020 09:45">Wednesday 10 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><pre><code class="language-none">1.0 → (param = :μ_1, median = 1.0031953557782098, lowerbound = 0.8796904764245131, upperbound = 1.1079271974869733)
+0.0 → (param = :μ_2, median = -0.028451589996153995, lowerbound = -0.162305139812449, upperbound = 0.12629381577723992)
+0.2 → (param = :σ_1, median = 0.2073911632382034, lowerbound = 0.08643693955081183, upperbound = 0.38851533849121533)
+2.0 → (param = :σ_2, median = 1.9789773978445684, lowerbound = 1.8760089819277055, upperbound = 2.1002109097281383)
+0.4 → (param = :prob, median = 0.4194886613407182, lowerbound = 0.3600807809550737, upperbound = 0.4794560617293065)</code></pre><p>we can see that the true values lie inside the confidence interval.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Basic Usage</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 10 June 2020 09:50">Wednesday 10 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
