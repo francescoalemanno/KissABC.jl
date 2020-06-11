@@ -133,6 +133,30 @@ end
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<6/sqrt(length(w))
 end
 
+@testset "Classical Mixture Model 0.1N+N" begin
+    st(res)=((quantile(res,0.1:0.1:0.9)-reverse(quantile(res,0.1:0.1:0.9)))/2)[1+(end-1)÷2:end]
+    st_n=[0.0, 0.04680825481526908, 0.1057221226763449, 0.2682111969397526, 0.8309228020477986]
+
+    prior=Uniform(-10,10)
+    sim(μ,other) = μ+rand((randn()*0.1,randn()))
+    dist(x,y)=abs(x-y)
+    plan=ABCplan(prior,sim,0.0,dist)
+
+    res,Δ=DE(plan,0.001,nparticles=300,generations=20000,parallel=true,verbose=false)
+    res2,Δ=ABCSMCPR(plan,0.001,nparticles=300,maxsimpp=Inf,verbose=false,c=0.0001)
+    res3,δ=ABCDE(plan,0.001,maxsimpp=Inf,nparticles=100,verbose=false)
+    res4,δ=ABC(plan,0.001,nparticles=100)
+    testst(alg,r) = begin
+        m = mean(abs,st(r)-st_n)
+        println(alg,": testing m = ",m)
+        m<0.1
+    end
+    @test testst("DE",res)
+    @test testst("ABCSMCPR",res2)
+    @test testst("ABC",res4)
+    @test testst("ABCDE",res3)
+end
+
 #benchmark
 #=
 function sim((u1, p1), params; n=10^6, raw=false)
@@ -167,8 +191,8 @@ tdata=randn(1000).*0.04.+2
 sim((μ,σ),param)=randn(100).*σ.+μ
 
 prior=Factored(Uniform(1,3),Truncated(Normal(0,0.1),0,100))
-
-res,_=ABCDE(prior,sim,tdata,ksdist,0.1,nparticles=50000,parallel=true)
+plan=ABCplan(prior,sim,tdata,ksdist)
+res,_=DE(plan,0.1,nparticles=5000,generations=100,parallel=true)
 
 prsample=[rand(prior) for i in 1:10000]
 μ_pr=getindex.(prsample,1)
