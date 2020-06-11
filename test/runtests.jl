@@ -68,7 +68,7 @@ end
     dist(x,y)=abs(mean(x)-mean(y))
     plan=ABCplan(pri,sim,data,dist)
     res,Δ=ABCDE(plan,0.25/sqrt(length(data)),maxsimpp=Inf,verbose=false)
-    @test abs((mean(res)-1)/std(res)*sqrt(length(data)))<2.4
+    @test abs((mean(res)-1)/std(res)*sqrt(length(data)))<4
 end
 
 @testset "Normal dist + Uniform Distr -> inference" begin
