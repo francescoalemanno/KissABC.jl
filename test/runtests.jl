@@ -125,12 +125,12 @@ end
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
     @show mean(getindex.(res,1)),std(getindex.(res,1))
     @show mean(getindex.(res,2)),std(getindex.(res,2))
-    res,w,ϵ=ABC(plan,0.01,parallel=true)
+    res,w,ϵ=ABC(plan,0.02,parallel=true)
     @show ϵ
     @show mean(getindex.(res,1)),std(getindex.(res,1))
     @show mean(getindex.(res,2)),std(getindex.(res,2))
-    @test abs((mean(getindex.(res,2))-2)/std(getindex.(res,2)))<4/sqrt(length(w))
-    @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
+    @test abs((mean(getindex.(res,2))-2)/std(getindex.(res,2)))<6/sqrt(length(w))
+    @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<6/sqrt(length(w))
 end
 
 #benchmark
