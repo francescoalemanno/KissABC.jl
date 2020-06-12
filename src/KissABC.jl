@@ -31,6 +31,6 @@ include("ABCREJ.jl")
 include("DE.jl")
 include("SMCPR.jl")
 
-export ABCplan, ABC, ABCSMCPR, ABCDE, Factored, sample_plan
+export ABCplan, ABC, ABCSMCPR, Factored, sample_plan
 
 end
