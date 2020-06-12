@@ -13,41 +13,41 @@ function model(P,N)
     R
 end</code></pre><pre><code class="language-none">model (generic function with 1 method)</code></pre><p>Let&#39;s use the model to generate some data, this data will constitute our dataset</p><pre><code class="language-julia">parameters = (1.0, 0.0, 0.2, 2.0, 0.4)
 data=model(parameters,5000)</code></pre><pre><code class="language-none">5000-element Array{Float64,1}:
-  0.8764153574350289
-  0.8714816088150388
- -2.1216934714721343
-  0.5162773147608527
-  2.11919592670798
-  0.9354999610101215
- -1.6925363274023666
-  1.1555223152388288
-  1.135814148138655
-  0.7257364612410785
+ -1.396150617101314
+  1.418925368203946
+  0.873926512841139
+  0.5924756932896218
+ -0.437784139399728
+ -1.3696871776038917
+ -1.0633497604088176
+  2.1662958381357518
+ -0.4107871871871427
+  0.7528086030507494
   ⋮
-  3.3558897607656206
-  1.411667242910679
-  0.9556526076127426
-  1.1626776515384905
-  0.19089571304690298
-  1.1241049356736268
-  0.7091207474926773
-  1.0264958052568358
-  1.3604107530764427</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
+  1.0652712869490797
+  1.289663816447724
+  1.439427872551967
+  1.0897221049498143
+  1.0118113472545138
+  0.7474075209439773
+ -1.342586252108035
+ -1.759733942328208
+ -1.1025185513762206</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
 histogram(data)</code></pre><p><img src="../ex1_hist1.svg" alt="ex1_hist1"/></p><p>we can now try to infer all parameters using <code>KissABC</code>, first of all we need to define a reasonable prior for our model</p><pre><code class="language-julia">prior=Factored(
             Uniform(0,2), # there is surely a peak between 0 and 2
             Uniform(-1,1), #there is a smeared distribution centered around 0
             Uniform(0,1), # the peak has surely a width below 1
             Uniform(0,4), # the smeared distribution surely has a width less than 4
-            Beta(4,4) # the number of total events from both distributions look about the same, so we will favor 0.5 just a bit
-        );</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre><code class="language-none">(0.49901189650314404, -0.3832407029434419, 0.08310838408204635, 2.7029548917904105, 0.672240172270862)</code></pre><p>now we need a distance function to compare datasets, this is not the best distance we could use, but it will work out anyway</p><pre><code class="language-julia">function D(x,y)
-    r=LinRange(0,1,length(x)+length(y))
+            Beta(2,2) # the number of total events from both distributions look about the same, so we will favor 0.5 just a bit
+        );</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre><code class="language-none">(1.9569825479252798, -0.9808141468426208, 0.9171960579056206, 3.5840304775386054, 0.5723132545132423)</code></pre><p>now we need a distance function to compare datasets, this is not the best distance we could use, but it will work out anyway</p><pre><code class="language-julia">function D(x,y)
+    r=(0.1,0.2,0.5,0.8,0.9)
     mean(abs,quantile(x,r).-quantile(y,r))
 end</code></pre><pre><code class="language-none">D (generic function with 1 method)</code></pre><p>we can now run ABCDE to get the posterior distribution of our parameters given the dataset <code>data</code></p><pre><code class="language-julia">plan=ABCplan(prior,model,data,D,params=5000)
-res,Δ,converged=ABCDE(plan,0.05,parallel=true,verbose=false);</code></pre><p>Has it converged to the target tolerance?</p><pre><code class="language-julia">print(&quot;Converged = &quot;,converged)</code></pre><pre><code class="language-none">Converged = true</code></pre><p>let&#39;s see the median and 90% confidence interval for the inferred parameters and let&#39;s compare them with the true values</p><pre><code class="language-julia">function getstats(V)
+res,Δ,converged=ABCDE(plan,0.02,parallel=true,generations=500,verbose=false);</code></pre><p>Has it converged to the target tolerance?</p><pre><code class="language-julia">print(&quot;Converged = &quot;,converged)</code></pre><pre><code class="language-none">Converged = true</code></pre><p>let&#39;s see the median and 95% confidence interval for the inferred parameters and let&#39;s compare them with the true values</p><pre><code class="language-julia">function getstats(V)
     (
         median=median(V),
-        lowerbound=quantile(V,0.05),
-        upperbound=quantile(V,0.95)
+        lowerbound=quantile(V,0.025),
+        upperbound=quantile(V,0.975)
     )
 end
 
@@ -57,8 +57,8 @@ stats=getstats.(P)
 
 for is in eachindex(stats)
     println(labels[is], &quot; ≡ &quot; ,parameters[is], &quot; → &quot;, stats[is])
-end</code></pre><pre><code class="language-none">μ_1 ≡ 1.0 → (median = 0.9993008987759466, lowerbound = 0.9422477699254745, upperbound = 1.0467634689288865)
-μ_2 ≡ 0.0 → (median = -0.051757937187077246, lowerbound = -0.16322615392918635, upperbound = 0.021783071531466705)
-σ_1 ≡ 0.2 → (median = 0.20202144564940622, lowerbound = 0.14648061082653813, upperbound = 0.2640330502579308)
-σ_2 ≡ 2.0 → (median = 2.0210286198194485, lowerbound = 1.9585409508119227, upperbound = 2.1096974488885856)
-prob ≡ 0.4 → (median = 0.4046430879414893, lowerbound = 0.3724921136078321, upperbound = 0.44066157423330204)</code></pre><p>we can see that the true values lie inside the confidence interval.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Basic Usage</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Thursday 11 June 2020 07:35">Thursday 11 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><pre><code class="language-none">μ_1 ≡ 1.0 → (median = 0.9805544669646395, lowerbound = 0.9421873535241906, upperbound = 1.0277895344691448)
+μ_2 ≡ 0.0 → (median = 0.10227124094770128, lowerbound = 0.03509130433028947, upperbound = 0.17689018272267457)
+σ_1 ≡ 0.2 → (median = 0.19233398604463994, lowerbound = 0.14434898558387815, upperbound = 0.2354900614629498)
+σ_2 ≡ 2.0 → (median = 2.000054375274807, lowerbound = 1.8855827455218193, upperbound = 2.1311103369481916)
+prob ≡ 0.4 → (median = 0.41887432624517895, lowerbound = 0.3751713656362252, upperbound = 0.46363213819805826)</code></pre><p>The inferred parameters are close to nominal values</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Basic Usage</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 12 June 2020 17:12">Friday 12 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
