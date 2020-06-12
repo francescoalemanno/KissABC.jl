@@ -171,6 +171,9 @@ t1/t2
 
 #plotting stuff
 #=
+
+using KissABC
+using Distributions
 using StatsBase
 function ksdist(x,y)
     p1=ecdf(x)
@@ -186,7 +189,7 @@ sim((μ,σ),param)=randn(100).*σ.+μ
 
 prior=Factored(Uniform(1,3),Truncated(Normal(0,0.1),0,100))
 plan=ABCplan(prior,sim,tdata,ksdist)
-res,_=DE(plan,0.1,nparticles=5000,generations=100,parallel=true)
+res,_=ABCDE(plan,0.1,nparticles=5000,generations=200,parallel=true)
 
 prsample=[rand(prior) for i in 1:10000]
 μ_pr=getindex.(prsample,1)
@@ -230,4 +233,5 @@ xlabel(L"\sigma")
 legend()
 tight_layout()
 savefig("../images/inf_normaldist.png")
+
 =#
