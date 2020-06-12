@@ -33,30 +33,30 @@ prior=Factored(
             Uniform(-1,1), #there is a smeared distribution centered around 0
             Uniform(0,1), # the peak has surely a width below 1
             Uniform(0,4), # the smeared distribution surely has a width less than 4
-            Beta(4,4) # the number of total events from both distributions look about the same, so we will favor 0.5 just a bit
+            Beta(2,2) # the number of total events from both distributions look about the same, so we will favor 0.5 just a bit
         );
 
 # let's look at a sample from the prior, to see that it works
 rand(prior)
 # now we need a distance function to compare datasets, this is not the best distance we could use, but it will work out anyway
 function D(x,y)
-    r=LinRange(0,1,length(x)+length(y))
+    r=(0.1,0.2,0.5,0.8,0.9)
     mean(abs,quantile(x,r).-quantile(y,r))
 end
 
 # we can now run ABCDE to get the posterior distribution of our parameters given the dataset `data`
 plan=ABCplan(prior,model,data,D,params=5000)
-res,Δ,converged=ABCDE(plan,0.05,parallel=true,verbose=false);
+res,Δ,converged=ABCDE(plan,0.02,parallel=true,generations=500,verbose=false);
 
 # Has it converged to the target tolerance?
 print("Converged = ",converged)
 
-# let's see the median and 90% confidence interval for the inferred parameters and let's compare them with the true values
+# let's see the median and 95% confidence interval for the inferred parameters and let's compare them with the true values
 function getstats(V)
     (
         median=median(V),
-        lowerbound=quantile(V,0.05),
-        upperbound=quantile(V,0.95)
+        lowerbound=quantile(V,0.025),
+        upperbound=quantile(V,0.975)
     )
 end
 
@@ -68,4 +68,4 @@ for is in eachindex(stats)
     println(labels[is], " ≡ " ,parameters[is], " → ", stats[is])
 end
 
-# we can see that the true values lie inside the confidence interval.
+# The inferred parameters are close to nominal values
