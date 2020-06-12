@@ -92,7 +92,7 @@ function ABCDE(plan::ABCplan, ϵ_target;
     ϵ_current=max(ϵ_target,mean(extrema(Δs)))+1
     while maximum(Δs)>ϵ_target && nsim < maxsimpp*nparticles
         ϵ_past=ϵ_current
-        ϵ_current=max(ϵ_target,sum(extrema(Δs).*(1-α,α)))
+        ϵ_current=min(ϵ_past,max(ϵ_target,sum(extrema(Δs).*(1-α,α))))
         idx=(1:nparticles)#[Δs.>ϵ_current]
         θs,Δs=ABCDE_innerloop(plan, ϵ_current, θs, Δs, idx, parallel)
         nsim+=length(idx)

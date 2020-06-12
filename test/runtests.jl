@@ -142,10 +142,10 @@ end
     dist(x,y)=abs(x-y)
     plan=ABCplan(prior,sim,0.0,dist)
 
-    res,Δ=DE(plan,0.001,nparticles=300,generations=20000,parallel=true,verbose=false)
-    res2,Δ=ABCSMCPR(plan,0.001,nparticles=300,maxsimpp=Inf,verbose=false,c=0.0001)
-    res3,δ=ABCDE(plan,0.001,maxsimpp=Inf,nparticles=100,verbose=false)
-    res4,δ=ABC(plan,0.001,nparticles=100)
+    res,Δ=DE(plan,0.01,nparticles=300,generations=20000,parallel=true,verbose=false)
+    res2,Δ=ABCSMCPR(plan,0.01,nparticles=300,maxsimpp=Inf,verbose=false,c=0.0001)
+    res3,δ=ABCDE(plan,0.01,maxsimpp=Inf,nparticles=100,verbose=false)
+    res4,δ=ABC(plan,0.01,nparticles=100)
     testst(alg,r) = begin
         m = mean(abs,st(r)-st_n)
         println(alg,": testing m = ",m)
