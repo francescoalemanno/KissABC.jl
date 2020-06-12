@@ -39,10 +39,10 @@ Random.seed!(1)
     @show ϵ,length(P)
     @test abs(mean(getindex.(P,1)) -46)/std(getindex.(P,1))<2
     @show mean(getindex.(P,1))
-    res,Δ=ABCDE(plan,0.01,nparticles=5000)
+    res,Δ=ABCDE(plan,0.01,nparticles=5000,generations=100,verbose=false)
     @show mean(getindex.(res,1))
     @test abs(mean(getindex.(res,1)) -46)/std(getindex.(res,1))<2
-    res2,Δ=ABCSMCPR(plan,0.05,nparticles=6000)
+    res2,Δ=ABCSMCPR(plan,0.05,nparticles=6000,verbose=false)
     @test abs(mean(getindex.(res2,1)) -46)/std(getindex.(res2,1))<2
 
     @test abs(median(getindex.(res,1)) - 44) <= 1
@@ -55,9 +55,9 @@ end
     sim(μ,params)=μ*μ+1
     dist(x,y)=abs(x-y)
     plan=ABCplan(pri,sim,1.5,dist)
-    P,w=ABCSMCPR(plan,0.02,nparticles=2000)
+    P,w=ABCSMCPR(plan,0.02,nparticles=2000,verbose=false)
     @test abs((mean(P)-1/sqrt(2))/0.02)<3
-    P,w=ABCDE(plan,0.02,nparticles=2000)
+    P,w=ABCDE(plan,0.02,nparticles=2000,verbose=false)
     @test abs((mean(P)-1/sqrt(2))/0.02)<3
 end
 
@@ -67,7 +67,7 @@ end
     sim(μ,other)=randn(length(data)).+μ
     dist(x,y)=abs(mean(x)-mean(y))
     plan=ABCplan(pri,sim,data,dist)
-    res,Δ=ABCDE(plan,0.25/sqrt(length(data)),maxsimpp=Inf,verbose=false)
+    res,Δ=ABCDE(plan,0.25/sqrt(length(data)),verbose=false)
     @test abs((mean(res)-1)/std(res))<4
 end
 
@@ -78,15 +78,11 @@ end
 
     plan=ABCplan(pri,sim,5.5,dist)
 
-    P,_ = ABCSMCPR(plan,0.025)
+    P,_ = ABCSMCPR(plan,0.025,verbose=false)
     stat=[sim(P[i],1) for i in eachindex(P)]
     @show mean(stat)
     @test abs((mean(stat)-5.5)/std(stat)) < 1
-    P,_ = ABCDE(plan,0.025)
-    stat=[sim(P[i],1) for i in eachindex(P)]
-    @show mean(stat)
-    @test abs((mean(stat)-5.5)/std(stat)) < 1
-    P,_ = ABCDE(plan,0.025,mcmcsteps=10)
+    P,_ = ABCDE(plan,0.025,verbose=false)
     stat=[sim(P[i],1) for i in eachindex(P)]
     @show mean(stat)
     @test abs((mean(stat)-5.5)/std(stat)) < 1
@@ -115,12 +111,12 @@ end
     prior=Factored(Uniform(0,1),Uniform(0,4))
     dist(x,y)=sum(abs,x.-y)/length(x)
     plan=ABCplan(prior,brownianrms,tdata,dist,params=30)
-    res,w=ABCSMCPR(plan,0.4,parallel=true)
+    res,w=ABCSMCPR(plan,0.4,parallel=true,verbose=false)
     @test abs((mean(getindex.(res,2))-2)/std(getindex.(res,2)))<4/sqrt(length(w))
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
     @show mean(getindex.(res,1)),std(getindex.(res,1))
     @show mean(getindex.(res,2)),std(getindex.(res,2))
-    res,w=ABCDE(plan,0.4,parallel=true)
+    res,w=ABCDE(plan,0.4,generations=100,parallel=true,verbose=false)
     @test abs((mean(getindex.(res,2))-2)/std(getindex.(res,2)))<4/sqrt(length(w))
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
     @show mean(getindex.(res,1)),std(getindex.(res,1))
@@ -131,6 +127,28 @@ end
     @show mean(getindex.(res,2)),std(getindex.(res,2))
     @test abs((mean(getindex.(res,2))-2)/std(getindex.(res,2)))<6/sqrt(length(w))
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<6/sqrt(length(w))
+end
+
+@testset "Classical Mixture Model 0.1N+N" begin
+    st(res)=((quantile(res,0.1:0.1:0.9)-reverse(quantile(res,0.1:0.1:0.9)))/2)[1+(end-1)÷2:end]
+    st_n=[0.0, 0.04680825481526908, 0.1057221226763449, 0.2682111969397526, 0.8309228020477986]
+
+    prior=Uniform(-10,10)
+    sim(μ,other) = μ+rand((randn()*0.1,randn()))
+    dist(x,y)=abs(x-y)
+    plan=ABCplan(prior,sim,0.0,dist)
+
+    res2,Δ=ABCSMCPR(plan,0.01,nparticles=300,maxsimpp=Inf,verbose=false,c=0.0001)
+    res3,δ=ABCDE(plan,0.01,nparticles=300,generations=5000,verbose=false)
+    res4,δ=ABC(plan,0.001,nparticles=300)
+    testst(alg,r) = begin
+        m = mean(abs,st(r)-st_n)
+        println(":",alg,": testing m = ",m)
+        m<0.1
+    end
+    @test testst("ABCSMCPR",res2)
+    @test testst("ABC",res4)
+    @test testst("ABCDE",res3)
 end
 
 #benchmark
@@ -146,13 +164,16 @@ function dist(s, s0)
  sqrt(sum(((s .- s0)./s).^2))
 end
 plan=ABCplan(Factored(Uniform(0,1), Uniform(0.5,1)), sim, [2.2, 0.4], dist)
-t1= @elapsed ABCSMCPR(plan, 0.01, nparticles=100, parallel=true)
-t2= @elapsed ABCDE(plan, 0.01, nparticles=100, parallel=true)
+t1= @elapsed ABCSMCPR(plan, 0.02, nparticles=100,maxsimpp=100, parallel=true)
+res,del,conv=ABCDE(plan, 0.02, nparticles=100,generations=60 ,parallel=true)
 t1/t2
 =#
 
 #plotting stuff
 #=
+
+using KissABC
+using Distributions
 using StatsBase
 function ksdist(x,y)
     p1=ecdf(x)
@@ -167,8 +188,8 @@ tdata=randn(1000).*0.04.+2
 sim((μ,σ),param)=randn(100).*σ.+μ
 
 prior=Factored(Uniform(1,3),Truncated(Normal(0,0.1),0,100))
-
-res,_=ABCDE(prior,sim,tdata,ksdist,0.1,nparticles=50000,parallel=true)
+plan=ABCplan(prior,sim,tdata,ksdist)
+res,_=ABCDE(plan,0.1,nparticles=5000,generations=200,parallel=true)
 
 prsample=[rand(prior) for i in 1:10000]
 μ_pr=getindex.(prsample,1)
@@ -212,4 +233,5 @@ xlabel(L"\sigma")
 legend()
 tight_layout()
 savefig("../images/inf_normaldist.png")
+
 =#
