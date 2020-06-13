@@ -35,7 +35,7 @@ function deperturb(prior::DiscreteUnivariateDistribution,sample::T,r1,r2,γ) whe
 end
 
 """
-    ABCDE(plan, ϵ_target; nparticles=100, generations=500, α=0, parallel=false, verbose=true)
+    ABCDE(plan, ϵ_target; nparticles=100, generations=500, α=0, parallel=false, earlystop=false, verbose=true)
 
 A sequential monte carlo algorithm inspired by differential evolution, very efficient (simpler version of B.M.Turner 2012, https://doi.org/10.1016/j.jmp.2012.06.004)
 
@@ -46,9 +46,10 @@ A sequential monte carlo algorithm inspired by differential evolution, very effi
 - `generations`: total number of simulations per particle
 - `α`: controls the ϵ for each simulation round as ϵ = m+α*(M-m) where m,M = extrema(distances)
 - `parallel`: when set to `true` multithreaded parallelism is enabled
+- `earlystop`: when set to `true` a particle is no longer updated as soon as it has reached ϵ_target, this provides a huge speedup, but it can lead to erroneous posterior distribution
 - `verbose`: when set to `true` verbosity is enabled
 """
-function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, parallel=false, verbose=true)
+function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, parallel=false, earlystop=false, verbose=true)
     @assert 0<=α<1 "α must be in 0 <= α < 1."
     @extract_params plan prior distance simulation data params
     θs,Δs=sample_plan(plan,nparticles,parallel)
@@ -60,8 +61,14 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, 
         nθs = identity.(θs)
         nΔs = identity.(Δs)
         ϵ_l, ϵ_h = extrema(Δs)
+        if earlystop
+            ϵ_h<=ϵ_target && break
+        end
         ϵ_pop = max(ϵ_target,ϵ_l + α * (ϵ_h - ϵ_l))
         @cthreads parallel for i in 1:nparticles
+            if earlystop
+                Δs[i] <= ϵ_target && continue
+            end
             s = i
             ϵ = ifelse(Δs[i] <= ϵ_target, ϵ_target, ϵ_pop)
             if Δs[i] > ϵ

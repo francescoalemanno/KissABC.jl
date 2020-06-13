@@ -139,8 +139,9 @@ end
     plan=ABCplan(prior,sim,0.0,dist)
 
     res2,Δ=ABCSMCPR(plan,0.01,nparticles=300,maxsimpp=Inf,verbose=false,c=0.0001)
-    res3,δ=ABCDE(plan,0.01,nparticles=300,generations=2000,verbose=true)
+    res3,δ=ABCDE(plan,0.01,nparticles=300,generations=2000,verbose=false)
     res4,δ=ABC(plan,0.001,nparticles=300)
+    res5,δ=ABCDE(plan,0.01,nparticles=300,generations=2000,verbose=false,earlystop=true)
     testst(alg,r) = begin
         m = mean(abs,st(r)-st_n)
         println(":",alg,": testing m = ",m)
@@ -148,8 +149,10 @@ end
     end
     @test testst("ABCSMCPR",res2)
     @test testst("ABCDE",res3)
+    @test !testst("ABCDE ES",res5) #do not remove the not operator
     @test testst("ABC",res4)
 end
+
 
 #benchmark
 #=
