@@ -43,11 +43,13 @@ A sequential monte carlo algorithm inspired by differential evolution, very effi
 - `plan`: a plan built using the function ABCplan.
 - `ϵ_target`: maximum acceptable distance between simulated datasets and the target dataset
 - `nparticles`: number of samples from the approximate posterior that will be returned
-- `generations`: total of simulations per particle
+- `generations`: total number of simulations per particle
+- `α`: controls the ϵ for each simulation round as ϵ = m+α*(M-m) where m,M = extrema(distances)
 - `parallel`: when set to `true` multithreaded parallelism is enabled
 - `verbose`: when set to `true` verbosity is enabled
 """
-function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, parallel=false, verbose=true)
+function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, parallel=false, verbose=true)
+    @assert 0<=α<1 "α must be in 0 <= α < 1."
     @extract_params plan prior distance simulation data params
     θs,Δs=sample_plan(plan,nparticles,parallel)
     γ = 2.38/sqrt(2*length(prior))
@@ -57,9 +59,11 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, parall
         iters+=1
         nθs=identity.(θs)
         nΔs=identity.(Δs)
+        ϵ_l,ϵ_h=extrema(Δs)
+        ϵ = max(ϵ_target,ϵ_l + α * (ϵ_h - ϵ_l))
         @cthreads parallel for i in 1:nparticles
             s=i
-            if Δs[i]>ϵ_target
+            if Δs[i]>ϵ
                 s=rand(1:nparticles)
             end
             a=s
@@ -75,7 +79,7 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, parall
             rand() > min(1,w_prior) && continue
             xp=simulation(θp,params)
             dp=distance(xp,data)
-            if dp <= max(ϵ_target, Δs[i])
+            if dp <= max(ϵ, Δs[i])
                 nΔs[i]=dp
                 nθs[i]=θp
             end
