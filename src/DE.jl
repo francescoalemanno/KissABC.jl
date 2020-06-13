@@ -35,7 +35,7 @@ function deperturb(prior::DiscreteUnivariateDistribution,sample::T,r1,r2,γ) whe
 end
 
 """
-    ABCDE(plan, ϵ_target; nparticles=100, generations=500, parallel=false, verbose=true)
+    ABCDE(plan, ϵ_target; nparticles=100, generations=500, α=0, parallel=false, verbose=true)
 
 A sequential monte carlo algorithm inspired by differential evolution, very efficient (simpler version of B.M.Turner 2012, https://doi.org/10.1016/j.jmp.2012.06.004)
 
