@@ -37,7 +37,7 @@ end
 """
     ABCDE(plan, ϵ_target; nparticles=100, generations=500, α=0, parallel=false, earlystop=false, verbose=true)
 
-A sequential monte carlo algorithm inspired by differential evolution, very efficient (simpler version of B.M.Turner 2012, https://doi.org/10.1016/j.jmp.2012.06.004)
+A population monte carlo algorithm inspired by differential evolution, very efficient (simpler version of B.M.Turner 2012, https://doi.org/10.1016/j.jmp.2012.06.004)
 
 # Arguments:
 - `plan`: a plan built using the function ABCplan.
@@ -53,6 +53,7 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, 
     @assert 0<=α<1 "α must be in 0 <= α < 1."
     @extract_params plan prior distance simulation data params
     θs,Δs=sample_plan(plan,nparticles,parallel)
+    nsims=zeros(Int,nparticles)
     γ = 2.38/sqrt(2*length(prior))
     iters=0
     complete=1-sum(Δs.>ϵ_target)/nparticles
@@ -72,7 +73,7 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, 
             s = i
             ϵ = ifelse(Δs[i] <= ϵ_target, ϵ_target, ϵ_pop)
             if Δs[i] > ϵ
-                s = rand(1:nparticles)
+                s=rand((1:nparticles)[Δs .<= Δs[i]])
             end
             a = s
             while a == s
@@ -86,6 +87,7 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, 
             w_prior = pdf(prior,θp) / pdf(prior,θs[i])
             rand() > min(1,w_prior) && continue
             xp = simulation(θp, params)
+            nsims[i]+=1
             dp = distance(xp,data)
             if dp <= max(ϵ, Δs[i])
                 nΔs[i] = dp
@@ -96,13 +98,13 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, 
         Δs = nΔs
         ncomplete = 1 - sum(Δs .> ϵ_target) / nparticles
         if verbose && (ncomplete != complete || complete >= (nparticles - 1) / nparticles)
-            @info "Finished run:" completion=ncomplete nsim = iters * nparticles range_ϵ = extrema(Δs)
+            @info "Finished run:" completion=ncomplete nsim = sum(nsims) range_ϵ = extrema(Δs)
         end
         complete=ncomplete
     end
     conv=maximum(Δs) <= ϵ_target
     if verbose
-        @info "End:" completion = complete converged = conv nsim = generations * nparticles range_ϵ = extrema(Δs)
+        @info "End:" completion = complete converged = conv nsim = sum(nsims) range_ϵ = extrema(Δs)
     end
     θs, Δs, conv
 end
