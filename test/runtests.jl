@@ -82,7 +82,7 @@ end
     stat=[sim(P[i],1) for i in eachindex(P)]
     @show mean(stat)
     @test abs((mean(stat)-5.5)/std(stat)) < 1
-    P,_ = ABCDE(plan,0.025,verbose=false)
+    P,_ = ABCDE(plan,0.025,generations=1000,verbose=false)
     stat=[sim(P[i],1) for i in eachindex(P)]
     @show mean(stat)
     @test abs((mean(stat)-5.5)/std(stat)) < 1
@@ -116,7 +116,7 @@ end
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
     @show mean(getindex.(res,1)),std(getindex.(res,1))
     @show mean(getindex.(res,2)),std(getindex.(res,2))
-    res,w=ABCDE(plan,0.4,generations=100,parallel=true,verbose=false)
+    res,w=ABCDE(plan,0.3,generations=100,parallel=true,verbose=false)
     @test abs((mean(getindex.(res,2))-2)/std(getindex.(res,2)))<4/sqrt(length(w))
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
     @show mean(getindex.(res,1)),std(getindex.(res,1))
@@ -139,7 +139,7 @@ end
     plan=ABCplan(prior,sim,0.0,dist)
 
     res2,Δ=ABCSMCPR(plan,0.01,nparticles=300,maxsimpp=Inf,verbose=false,c=0.0001)
-    res3,δ=ABCDE(plan,0.01,nparticles=300,generations=5000,verbose=false)
+    res3,δ=ABCDE(plan,0.01,nparticles=300,generations=2000,verbose=true)
     res4,δ=ABC(plan,0.001,nparticles=300)
     testst(alg,r) = begin
         m = mean(abs,st(r)-st_n)
@@ -147,8 +147,8 @@ end
         m<0.1
     end
     @test testst("ABCSMCPR",res2)
-    @test testst("ABC",res4)
     @test testst("ABCDE",res3)
+    @test testst("ABC",res4)
 end
 
 #benchmark
@@ -165,7 +165,7 @@ function dist(s, s0)
 end
 plan=ABCplan(Factored(Uniform(0,1), Uniform(0.5,1)), sim, [2.2, 0.4], dist)
 t1= @elapsed ABCSMCPR(plan, 0.02, nparticles=100,maxsimpp=100, parallel=true)
-res,del,conv=ABCDE(plan, 0.02, nparticles=100,generations=60 ,parallel=true)
+t2= @elapsed begin res,del,conv=ABCDE(plan, 0.02, nparticles=100,generations=60 ,parallel=true); end
 t1/t2
 =#
 
@@ -189,7 +189,7 @@ sim((μ,σ),param)=randn(100).*σ.+μ
 
 prior=Factored(Uniform(1,3),Truncated(Normal(0,0.1),0,100))
 plan=ABCplan(prior,sim,tdata,ksdist)
-res,_=ABCDE(plan,0.1,nparticles=5000,generations=200,parallel=true)
+res,_=ABCDE(plan,0.1,nparticles=10000,generations=200,parallel=true)
 
 prsample=[rand(prior) for i in 1:10000]
 μ_pr=getindex.(prsample,1)
@@ -232,6 +232,6 @@ xlim(dilateextrema(σ_pr)...)
 xlabel(L"\sigma")
 legend()
 tight_layout()
-savefig("../images/inf_normaldist.png")
+PyPlot.savefig("../images/inf_normaldist.png")
 
 =#

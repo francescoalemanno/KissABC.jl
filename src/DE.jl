@@ -57,46 +57,47 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, 
     complete=1-sum(Δs.>ϵ_target)/nparticles
     while iters<generations
         iters+=1
-        nθs=identity.(θs)
-        nΔs=identity.(Δs)
-        ϵ_l,ϵ_h=extrema(Δs)
-        ϵ = max(ϵ_target,ϵ_l + α * (ϵ_h - ϵ_l))
+        nθs = identity.(θs)
+        nΔs = identity.(Δs)
+        ϵ_l, ϵ_h = extrema(Δs)
+        ϵ_pop = max(ϵ_target,ϵ_l + α * (ϵ_h - ϵ_l))
         @cthreads parallel for i in 1:nparticles
-            s=i
-            if Δs[i]>ϵ
-                s=rand(1:nparticles)
+            s = i
+            ϵ = ifelse(Δs[i] <= ϵ_target, ϵ_target, ϵ_pop)
+            if Δs[i] > ϵ
+                s = rand(1:nparticles)
             end
-            a=s
-            while a==s
-                a=rand(1:nparticles)
+            a = s
+            while a == s
+                a = rand(1:nparticles)
             end
-            b=a
-            while b==a || b==s
-                b=rand(1:nparticles)
+            b = a
+            while b == a || b == s
+                b = rand(1:nparticles)
             end
-            θp=deperturb(prior,θs[s],θs[a],θs[b],γ)
-            w_prior=pdf(prior,θp)/pdf(prior,θs[i])
+            θp = deperturb(prior,θs[s],θs[a],θs[b],γ)
+            w_prior = pdf(prior,θp) / pdf(prior,θs[i])
             rand() > min(1,w_prior) && continue
-            xp=simulation(θp,params)
-            dp=distance(xp,data)
+            xp = simulation(θp, params)
+            dp = distance(xp,data)
             if dp <= max(ϵ, Δs[i])
-                nΔs[i]=dp
-                nθs[i]=θp
+                nΔs[i] = dp
+                nθs[i] = θp
             end
         end
-        θs=nθs
-        Δs=nΔs
-        ncomplete=1-sum(Δs.>ϵ_target)/nparticles
-        if verbose && (ncomplete!=complete || complete>=(nparticles-1)/nparticles)
-            @info "Finished run:" completion=ncomplete nsim=iters*nparticles range_ϵ=extrema(Δs)
+        θs = nθs
+        Δs = nΔs
+        ncomplete = 1 - sum(Δs .> ϵ_target) / nparticles
+        if verbose && (ncomplete != complete || complete >= (nparticles - 1) / nparticles)
+            @info "Finished run:" completion=ncomplete nsim = iters * nparticles range_ϵ = extrema(Δs)
         end
         complete=ncomplete
     end
-    conv=maximum(Δs)<=ϵ_target
+    conv=maximum(Δs) <= ϵ_target
     if verbose
-        @info "End:" completion=complete converged=conv nsim=generations*nparticles range_ϵ=extrema(Δs)
+        @info "End:" completion = complete converged = conv nsim = generations * nparticles range_ϵ = extrema(Δs)
     end
-    θs,Δs,conv
+    θs, Δs, conv
 end
 
 export ABCDE
