@@ -41,7 +41,7 @@ macro extract_params(S,params...)
     esc(c)
 end
 
-import Distributions.pdf, Random.rand, Base.length
+import Distributions.pdf, Distributions.logpdf, Random.rand, Base.length
 struct MixedSupport <: ValueSupport; end
 
 """
@@ -61,6 +61,14 @@ end
 Function to evaluate the pdf of a `Factored` distribution object
 """
 pdf(d::Factored,x) = prod(i->pdf(d.p[i],x[i]),eachindex(x))
+
+"""
+    logpdf(d::Factored, x) = begin
+
+Function to evaluate the logpdf of a `Factored` distribution object
+"""
+logpdf(d::Factored,x) = sum(i->logpdf(d.p[i],x[i]),eachindex(x))
+
 
 """
     rand(rng::AbstractRNG, factoreddist::Factored)

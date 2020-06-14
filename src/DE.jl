@@ -14,10 +14,11 @@ deperturb
 function deperturb(prior::Factored{N},sample,r1,r2,γ) where N
     τ=rand(1:N)
     idx=randperm(N)[1:τ]
-    corr_γ=γ*sqrt(N/τ)
+    λ=0.2*(rand()-0.5) # CU(-0.1,0.1)
+    corr_γ=γ*sqrt(N/τ)*(1+λ)
     ntuple(Val(N)) do i
         if i ∈ idx
-            return deperturb(prior.p[i],sample[i],r1[i],r2[i],γ)
+            return deperturb(prior.p[i],sample[i],r1[i],r2[i],corr_γ)
         else
             return sample[i]
         end
@@ -118,4 +119,65 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, 
     θs, Δs, conv
 end
 
-export ABCDE
+function chisq_diagnostic(prior,Δs,ϵ)
+    N=length(Δs)
+    n=length(prior)
+    chisq=sum(abs2,Δs)/(ϵ*ϵ*(N-n))
+    filterparts=(n+1):N
+    optsamples=sum(x->x<2,cumsum((sort(Δs)./ϵ).^2)[filterparts]./(filterparts .- n))+n
+    (red_chisq=chisq,ess=optsamples)
+end
+
+function KABCDE(plan::ABCplan, ϵ; nparticles=100, generations=100, parallel=false, verbose=true)
+    @assert ϵ>0 "ϵ must be greater than zero, since ϵ represents the kernel bandwidth"
+    @extract_params plan prior distance simulation data params
+    θs,Δs=sample_plan(plan,nparticles,parallel)
+    nsims=zeros(Int,nparticles)
+    γ = 2.38/sqrt(2*length(prior))
+    iters=0
+    kernel=Normal(oftype(ϵ,0),ϵ)
+    logJ(d) = logpdf(kernel,d)
+    while iters<generations
+        iters+=1
+        nθs = identity.(θs)
+        nΔs = identity.(Δs)
+        @cthreads parallel for i in 1:nparticles
+            a = i
+            while a == i
+                a = rand(1:nparticles)
+            end
+            b = a
+            while b == a || b == i
+                b = rand(1:nparticles)
+            end
+            θp = deperturb(prior,θs[i],θs[a],θs[b],γ)
+            xp = simulation(θp, params)
+            nsims[i]+=1
+            dp = distance(xp,data)
+            log_w=logpdf(prior,θp)-logpdf(prior,θs[i])+logJ(dp)-logJ(Δs[i])
+            if log(rand()) <= min(0,log_w)
+                nΔs[i] = dp
+                nθs[i] = θp
+            end
+        end
+        θs = nθs
+        Δs = nΔs
+        if verbose
+            diagnostic=chisq_diagnostic(prior,Δs,ϵ)
+            @info "Finished run:" nsim = sum(nsims) range_ϵ = extrema(Δs) reduced_χ²=diagnostic.red_chisq ESS=diagnostic.ess
+        end
+    end
+    if verbose
+        diagnostic=chisq_diagnostic(prior,Δs,ϵ)
+        @info "Last run:" nsim = sum(nsims) range_ϵ = extrema(Δs) reduced_χ²=diagnostic.red_chisq ESS=diagnostic.ess
+    end
+    ws=logJ.(Δs)
+    goodsamples=isfinite.(ws) .& (!isnan).(ws)
+    θs=θs[goodsamples]
+    Δs=Δs[goodsamples]
+    ws=ws[goodsamples]
+    ws = exp.(ws) ./ sum( exp.(ws) )
+    (samples=θs, weights=ws, errors=Δs)
+end
+
+export ABCDE, KABCDE
