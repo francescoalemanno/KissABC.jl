@@ -141,7 +141,7 @@ end
     res2,Δ=ABCSMCPR(plan,0.01,nparticles=300,maxsimpp=Inf,verbose=false,c=0.0001)
     res3,δ=ABCDE(plan,0.01,nparticles=300,generations=2000,verbose=false)
     res4,δ=ABC(plan,0.001,nparticles=300)
-    res5,δ=ABCDE(plan,0.01,nparticles=300,generations=2000,verbose=false,earlystop=true)
+    res5,δ=ABCDE(plan,0.01,nparticles=100,generations=2000,verbose=true,earlystop=true)
     testst(alg,r) = begin
         m = mean(abs,st(r)-st_n)
         println(":",alg,": testing m = ",m)

@@ -1,7 +1,6 @@
 
-function compute_kernel_scales(prior::Factored,V)
-    l = length(V[1])
-    ntuple(i -> compute_kernel_scales(prior.p[i],getindex.(V,i)),l)
+function compute_kernel_scales(prior::Factored{N},V) where N
+    ntuple(i -> compute_kernel_scales(prior.p[i],getindex.(V,i)),Val(N))
 end
 
 function compute_kernel_scales(prior::DiscreteDistribution,V)
@@ -22,9 +21,8 @@ function kernel(prior::ContinuousDistribution,c,scale)
     truncated(Normal(c,scale),minimum(prior),maximum(prior))
 end
 
-function perturb(prior::Factored,scales,sample)
-    l=length(sample)
-    ntuple(i -> perturb(prior.p[i],scales[i],sample[i]),l)
+function perturb(prior::Factored{N},scales,sample) where N
+    ntuple(i -> perturb(prior.p[i],scales[i],sample[i]),Val(N))
 end
 
 function perturb(prior::Distribution,scales,sample)
