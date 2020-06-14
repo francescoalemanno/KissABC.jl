@@ -127,6 +127,11 @@ end
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
     @show mean(getindex.(res,1)),std(getindex.(res,1))
     @show mean(getindex.(res,2)),std(getindex.(res,2))
+    res,w,d=KABCDE(plan,0.3,generations=100,parallel=true,verbose=false)
+    @test abs((sum(getindex.(res,2).*w)-2)/std(getindex.(res,2)))<4/sqrt(length(w))
+    @test abs((sum(getindex.(res,1).*w)-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
+    @show mean(getindex.(res,1)),std(getindex.(res,1))
+    @show mean(getindex.(res,2)),std(getindex.(res,2))
     res,w,ϵ=ABC(plan,0.02,parallel=true)
     @show ϵ
     @show mean(getindex.(res,1)),std(getindex.(res,1))
