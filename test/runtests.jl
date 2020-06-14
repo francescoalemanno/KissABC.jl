@@ -210,7 +210,7 @@ function dilateextrema(X)
     return (1.02,1.08).*(E.-mean(E)).+mean(E)
 end
 using PyPlot
-pygui(true)
+pygui(false)
 figure(figsize=1.5 .*(7.5,7.5).*(1,(sqrt(5)-1)/2),dpi=200)
 subplot(2,2,1)
 title("PRIOR")
