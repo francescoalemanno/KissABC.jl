@@ -59,7 +59,7 @@ end
     @test abs((mean(P)-1/sqrt(2))/0.02)<3
     P,w=ABCDE(plan,0.02,nparticles=2000,verbose=false)
     @test abs((mean(P)-1/sqrt(2))/0.02)<3
-    P,w=KABCDE(plan,0.02,nparticles=2000,generations=500,verbose=false)
+    P,w=KABCDE(plan,0.02,nparticles=2000,generations=1000,verbose=true)
     @test abs((mean(P.*w)/mean(w)-1/sqrt(2))/0.02)<3
 end
 
