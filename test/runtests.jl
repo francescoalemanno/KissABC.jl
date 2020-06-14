@@ -88,7 +88,7 @@ end
     stat=[sim(P[i],1) for i in eachindex(P)]
     @show mean(stat)
     @test abs((mean(stat)-5.5)/std(stat)) < 1
-    P,w,d = KABCDE(plan,0.025,generations=1000,verbose=false)
+    P,w,d = KABCDE(plan,0.025,generations=1000,verbose=true)
     stat=[sim(P[i],1) for i in eachindex(P)]
     @show mean(stat)
     @test abs((sum(stat.*w)-5.5)/std(stat)) < 1
