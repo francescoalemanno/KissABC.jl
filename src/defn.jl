@@ -83,3 +83,23 @@ rand(rng::AbstractRNG,factoreddist::Factored) = rand.(Ref(rng),factoreddist.p)
 returns the number of distributions contained in `p`.
 """
 length(p::Factored) = sum(length.(p.p))
+
+"""
+    sample_plan(plan::ABCplan, nparticles, parallel)
+
+function to sample the prior distribution of both parameters and distances.
+
+# Arguments:
+- `plan`: a plan built using the function ABCplan.
+- `nparticles`: number of samples to draw.
+- `parallel`: enable or disable threaded parallelism via `true` or `false`.
+"""
+function sample_plan(plan::ABCplan,nparticles,parallel)
+    θs=[rand(plan.prior) for i in 1:nparticles]
+    Δs=fill(plan.distance(plan.data,plan.data),nparticles)
+    @cthreads parallel for i in 1:nparticles
+        x=plan.simulation(θs[i],plan.params)
+        Δs[i]=plan.distance(x,plan.data)
+    end
+    θs,Δs
+end

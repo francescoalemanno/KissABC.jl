@@ -151,6 +151,7 @@ end
 
     res2,Δ=ABCSMCPR(plan,0.01,nparticles=300,maxsimpp=Inf,verbose=false,c=0.0001)
     res3,δ=ABCDE(plan,0.01,nparticles=300,generations=2000,verbose=false)
+    res6,δ=KABCDE(plan,0.01,nparticles=300,generations=2000,verbose=false)
     res4,δ=ABC(plan,0.001,nparticles=300)
     res5,δ=ABCDE(plan,0.01,nparticles=100,generations=2000,verbose=true,earlystop=true)
     testst(alg,r) = begin
@@ -160,6 +161,7 @@ end
     end
     @test testst("ABCSMCPR",res2)
     @test testst("ABCDE",res3)
+    @test testst("KABCDE",res6)
     @test !testst("ABCDE ES",res5) #do not remove the not operator
     @test testst("ABC",res4)
 end

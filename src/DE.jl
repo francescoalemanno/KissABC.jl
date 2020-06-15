@@ -122,10 +122,11 @@ end
 function chisq_diagnostic(prior,Δs,ϵ)
     N=length(Δs)
     n=length(prior)
-    chisq=sum(abs2,Δs)/(ϵ*ϵ*(N-n))
+    eff_eps=sqrt(sum(abs2,Δs)/(N-n))
+    chisq=abs2(eff_eps/ϵ)
     filterparts=(n+1):N
     optsamples=sum(x->x<2,cumsum((sort(Δs)./ϵ).^2)[filterparts]./(filterparts .- n))+n
-    (red_chisq=chisq,ess=optsamples)
+    (red_chisq=chisq,ess=optsamples,eff_ϵ=eff_eps)
 end
 
 function KABCDE(plan::ABCplan, ϵ; nparticles=100, generations=100, parallel=false, verbose=true)
@@ -164,12 +165,12 @@ function KABCDE(plan::ABCplan, ϵ; nparticles=100, generations=100, parallel=fal
         Δs = nΔs
         if verbose
             diagnostic=chisq_diagnostic(prior,Δs,ϵ)
-            @info "Finished run:" nsim = sum(nsims) range_ϵ = extrema(Δs) reduced_χ²=diagnostic.red_chisq ESS=diagnostic.ess
+            @info "Finished run:" nsim = sum(nsims) range_ϵ = extrema(Δs) reduced_χ²=diagnostic.red_chisq ESS=diagnostic.ess effective_ϵ=diagnostic.eff_ϵ
         end
     end
     if verbose
         diagnostic=chisq_diagnostic(prior,Δs,ϵ)
-        @info "Last run:" nsim = sum(nsims) range_ϵ = extrema(Δs) reduced_χ²=diagnostic.red_chisq ESS=diagnostic.ess
+        @info "Last run:" nsim = sum(nsims) range_ϵ = extrema(Δs) reduced_χ²=diagnostic.red_chisq ESS=diagnostic.ess effective_ϵ=diagnostic.eff_ϵ
     end
     ws=logJ.(Δs)
     goodsamples=isfinite.(ws) .& (!isnan).(ws)

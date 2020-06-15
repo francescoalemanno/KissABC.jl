@@ -37,26 +37,6 @@ function kerneldensity(prior::Distribution,scales,s1,s2)
     return pdf(kernel(prior,s1,scales),s2)
 end
 
-"""
-    sample_plan(plan::ABCplan, nparticles, parallel)
-
-function to sample the prior distribution of both parameters and distances.
-
-# Arguments:
-- `plan`: a plan built using the function ABCplan.
-- `nparticles`: number of samples to draw.
-- `parallel`: enable or disable threaded parallelism via `true` or `false`.
-"""
-function sample_plan(plan::ABCplan,nparticles,parallel)
-    θs=[rand(plan.prior) for i in 1:nparticles]
-    Δs=fill(plan.distance(plan.data, plan.data),nparticles)
-    @cthreads parallel for i in 1:nparticles
-        x=plan.simulation(θs[i],plan.params)
-        Δs[i]=plan.distance(x,plan.data)
-    end
-    θs,Δs
-end
-
 function ABCSMCPR(plan::ABCplan, ϵ_target;
                   nparticles=100, maxsimpp=1e3, α=0.3, c=0.01, parallel=false, verbose=true)
     # https://doi.org/10.1111/j.1541-0420.2010.01410.x
