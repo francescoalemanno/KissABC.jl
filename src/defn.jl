@@ -41,7 +41,7 @@ macro extract_params(S,params...)
     esc(c)
 end
 
-import Distributions.pdf, Random.rand, Base.length
+import Distributions.pdf, Distributions.logpdf, Random.rand, Base.length
 struct MixedSupport <: ValueSupport; end
 
 """
@@ -63,6 +63,14 @@ Function to evaluate the pdf of a `Factored` distribution object
 pdf(d::Factored,x) = prod(i->pdf(d.p[i],x[i]),eachindex(x))
 
 """
+    logpdf(d::Factored, x) = begin
+
+Function to evaluate the logpdf of a `Factored` distribution object
+"""
+logpdf(d::Factored,x) = sum(i->logpdf(d.p[i],x[i]),eachindex(x))
+
+
+"""
     rand(rng::AbstractRNG, factoreddist::Factored)
 
 function to sample one element from a `Factored` object
@@ -75,3 +83,23 @@ rand(rng::AbstractRNG,factoreddist::Factored) = rand.(Ref(rng),factoreddist.p)
 returns the number of distributions contained in `p`.
 """
 length(p::Factored) = sum(length.(p.p))
+
+"""
+    sample_plan(plan::ABCplan, nparticles, parallel)
+
+function to sample the prior distribution of both parameters and distances.
+
+# Arguments:
+- `plan`: a plan built using the function ABCplan.
+- `nparticles`: number of samples to draw.
+- `parallel`: enable or disable threaded parallelism via `true` or `false`.
+"""
+function sample_plan(plan::ABCplan,nparticles,parallel)
+    θs=[rand(plan.prior) for i in 1:nparticles]
+    Δs=fill(plan.distance(plan.data,plan.data),nparticles)
+    @cthreads parallel for i in 1:nparticles
+        x=plan.simulation(θs[i],plan.params)
+        Δs[i]=plan.distance(x,plan.data)
+    end
+    θs,Δs
+end

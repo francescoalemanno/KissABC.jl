@@ -59,6 +59,8 @@ end
     @test abs((mean(P)-1/sqrt(2))/0.02)<3
     P,w=ABCDE(plan,0.02,nparticles=2000,verbose=false)
     @test abs((mean(P)-1/sqrt(2))/0.02)<3
+    P,w=KABCDE(plan,0.02,nparticles=2000,generations=1000,verbose=false)
+    @test abs((mean(P.*w)/mean(w)-1/sqrt(2))/(3*0.02))<3
 end
 
 @testset "Normal dist -> Normal Dist" begin
@@ -86,6 +88,10 @@ end
     stat=[sim(P[i],1) for i in eachindex(P)]
     @show mean(stat)
     @test abs((mean(stat)-5.5)/std(stat)) < 1
+    P,w,d = KABCDE(plan,0.025,generations=1000,verbose=true)
+    stat=[sim(P[i],1) for i in eachindex(P)]
+    @show mean(stat)
+    @test abs((sum(stat.*w)-5.5)/std(stat)) < 1
 end
 
 function brownian((μ,σ),N)
@@ -121,6 +127,11 @@ end
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
     @show mean(getindex.(res,1)),std(getindex.(res,1))
     @show mean(getindex.(res,2)),std(getindex.(res,2))
+    res,w,d=KABCDE(plan,0.3,generations=100,parallel=true,verbose=false)
+    @test abs((sum(getindex.(res,2).*w)-2)/std(getindex.(res,2)))<4/sqrt(length(w))
+    @test abs((sum(getindex.(res,1).*w)-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
+    @show mean(getindex.(res,1)),std(getindex.(res,1))
+    @show mean(getindex.(res,2)),std(getindex.(res,2))
     res,w,ϵ=ABC(plan,0.02,parallel=true)
     @show ϵ
     @show mean(getindex.(res,1)),std(getindex.(res,1))
@@ -140,6 +151,7 @@ end
 
     res2,Δ=ABCSMCPR(plan,0.01,nparticles=300,maxsimpp=Inf,verbose=false,c=0.0001)
     res3,δ=ABCDE(plan,0.01,nparticles=300,generations=2000,verbose=false)
+    res6,δ=KABCDE(plan,0.01,nparticles=300,generations=2000,verbose=false)
     res4,δ=ABC(plan,0.001,nparticles=300)
     res5,δ=ABCDE(plan,0.01,nparticles=100,generations=2000,verbose=true,earlystop=true)
     testst(alg,r) = begin
@@ -149,6 +161,7 @@ end
     end
     @test testst("ABCSMCPR",res2)
     @test testst("ABCDE",res3)
+    @test testst("KABCDE",res6)
     @test !testst("ABCDE ES",res5) #do not remove the not operator
     @test testst("ABC",res4)
 end
