@@ -129,6 +129,20 @@ function chisq_diagnostic(prior,Δs,ϵ)
     (red_chisq=chisq,ess=optsamples,eff_ϵ=eff_eps)
 end
 
+"""
+    KABCDE(plan, ϵ; nparticles=100, generations=100, parallel=false, verbose=true)
+
+A sequential monte carlo algorithm inspired by differential evolution, very efficient (simpler version of B.M.Turner 2012, https://doi.org/10.1016/j.jmp.2012.06.004).
+This method uses a kernel function to accept or reject samples on the hypothesis of Gaussianly distributed errors.
+
+# Arguments:
+- `plan`: a plan built using the function ABCplan.
+- `ϵ`: target statistical distance between between simulated datasets and the target dataset
+- `nparticles`: number of samples from the approximate posterior that will be returned
+- `generations`: total number of simulations per particle
+- `parallel`: when set to `true` multithreaded parallelism is enabled
+- `verbose`: when set to `true` verbosity is enabled
+"""
 function KABCDE(plan::ABCplan, ϵ; nparticles=100, generations=100, parallel=false, verbose=true)
     @assert ϵ>0 "ϵ must be greater than zero, since ϵ represents the kernel bandwidth"
     @extract_params plan prior distance simulation data params
