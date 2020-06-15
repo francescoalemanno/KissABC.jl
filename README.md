@@ -77,4 +77,5 @@ This package currently implements 3 algorithms whose details can be found in Doc
 
 1. `ABC` this is a standard rejection algorithm, you can find examples in `test/runtests.jl`
 1. `ABCSMCPR` this is the sequential monte carlo algorithm by Drovandi et al. 2011, you can find an examples in `test/runtests.jl`
-1. `ABCDE` this is the sequential monte carlo algorithm based on differential evolution by B.M. Turner 2012, you can find an examples in `test/runtests.jl` (this algorithm tends to be the most efficient)
+1. `ABCDE` this is the population monte carlo algorithm based on differential evolution by B.M. Turner 2012, you can find an examples in `test/runtests.jl`
+1. `KABCDE` this is the kernel sequential monte carlo algorithm based on differential evolution by B.M. Turner 2012, you can find an examples in `test/runtests.jl` (this algorithm tends to be the most sample efficient)
