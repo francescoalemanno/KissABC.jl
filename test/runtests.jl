@@ -166,6 +166,14 @@ end
     @test testst("ABC",res4)
 end
 
+function ABCplan_onlydistance(prior,costfunction;params=())
+    fakedist(x,y)=x+y
+    ABCplan(prior,costfunction,0.0,fakedist;params=params)
+end
+@testset "Usecase of issue #10" begin
+    plan=ABCplan_onlydistance(Normal(0,1),(x,other)->abs(x-1.5))
+    @test abs(mean(ABCDE(plan,0.01,verbose=false)[1])-1.5)<=0.01
+end
 
 #benchmark
 #=
