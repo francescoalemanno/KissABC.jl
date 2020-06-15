@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Example: Gaussian Mixture · KissABC.jl</title><link rel="canonical" href="https://francescoalemanno.github.io/KissABC.jl/example_1/"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">KissABC.jl</span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Basic Usage</a></li><li class="is-active"><a class="tocitem" href>Example: Gaussian Mixture</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Example: Gaussian Mixture</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Example: Gaussian Mixture</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/francescoalemanno/KissABC.jl/blob/master/docs/literate/example_1.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="A-gaussian-mixture-model-1"><a class="docs-heading-anchor" href="#A-gaussian-mixture-model-1">A gaussian mixture model</a><a class="docs-heading-anchor-permalink" href="#A-gaussian-mixture-model-1" title="Permalink"></a></h1><p>First of all we define our model,</p><pre><code class="language-julia">using KissABC
+using Distributions
+
+function model(P,N)
+    μ_1, μ_2, σ_1, σ_2, prob=P
+    d1=randn(N).*σ_1 .+ μ_1
+    d2=randn(N).*σ_2 .+ μ_2
+    ps=rand(N).&lt;prob
+    R=zeros(N)
+    R[ps].=d1[ps]
+    R[.!ps].=d2[.!ps]
+    R
+end</code></pre><pre><code class="language-none">model (generic function with 1 method)</code></pre><p>Let&#39;s use the model to generate some data, this data will constitute our dataset</p><pre><code class="language-julia">parameters = (1.0, 0.0, 0.2, 2.0, 0.4)
+data=model(parameters,5000)</code></pre><pre><code class="language-none">5000-element Array{Float64,1}:
+  1.011020864934512
+  0.4979998912170507
+  0.9332354146448796
+  1.0139562623655476
+  1.0128546698434289
+  1.0794442243406603
+ -2.438258590135969
+  3.5529179210793957
+  0.5468972244318208
+ -1.4940504593758734
+  ⋮
+  1.3341544745765834
+ -1.566585600196889
+ -1.9765366771864128
+  0.327919654780215
+  0.9736282682454793
+  1.2410974488627289
+  0.6902432956851412
+  1.1604328952111844
+  1.2593953572842143</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
+histogram(data)</code></pre><p><img src="../ex1_hist1.svg" alt="ex1_hist1"/></p><p>we can now try to infer all parameters using <code>KissABC</code>, first of all we need to define a reasonable prior for our model</p><pre><code class="language-julia">prior=Factored(
+            Uniform(0,2), # there is surely a peak between 0 and 2
+            Uniform(-1,1), #there is a smeared distribution centered around 0
+            Uniform(0,1), # the peak has surely a width below 1
+            Uniform(0,4), # the smeared distribution surely has a width less than 4
+            Beta(2,2) # the number of total events from both distributions look about the same, so we will favor 0.5 just a bit
+        );</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre><code class="language-none">(1.3634402146602724, -0.9042932199984266, 0.8489853333349302, 3.8248670415888206, 0.8296279867849565)</code></pre><p>now we need a distance function to compare datasets, this is not the best distance we could use, but it will work out anyway</p><pre><code class="language-julia">function D(x,y)
+    r=(0.1,0.2,0.5,0.8,0.9)
+    mean(abs,quantile(x,r).-quantile(y,r))
+end</code></pre><pre><code class="language-none">D (generic function with 1 method)</code></pre><p>we can now run ABCDE to get the posterior distribution of our parameters given the dataset <code>data</code></p><pre><code class="language-julia">plan=ABCplan(prior,model,data,D,params=5000)
+res,Δ,converged=ABCDE(plan,0.02,parallel=true,generations=500,verbose=false);</code></pre><p>Has it converged to the target tolerance?</p><pre><code class="language-julia">print(&quot;Converged = &quot;,converged)</code></pre><pre><code class="language-none">Converged = true</code></pre><p>let&#39;s see the median and 95% confidence interval for the inferred parameters and let&#39;s compare them with the true values</p><pre><code class="language-julia">function getstats(V)
+    (
+        median=median(V),
+        lowerbound=quantile(V,0.025),
+        upperbound=quantile(V,0.975)
+    )
+end
+
+labels=(:μ_1, :μ_2, :σ_1, :σ_2, :prob)
+P=[getindex.(res,i) for i in 1:5]
+stats=getstats.(P)
+
+for is in eachindex(stats)
+    println(labels[is], &quot; ≡ &quot; ,parameters[is], &quot; → &quot;, stats[is])
+end</code></pre><pre><code class="language-none">μ_1 ≡ 1.0 → (median = 0.9841055675410071, lowerbound = 0.9336282475515806, upperbound = 1.0365314168408952)
+μ_2 ≡ 0.0 → (median = 0.008264273033324984, lowerbound = -0.07038532626665153, upperbound = 0.06825014466730257)
+σ_1 ≡ 0.2 → (median = 0.18882643063808296, lowerbound = 0.15261909216705807, upperbound = 0.23754004367924272)
+σ_2 ≡ 2.0 → (median = 1.9405580328710297, lowerbound = 1.8086683597654656, upperbound = 2.0753764880194794)
+prob ≡ 0.4 → (median = 0.38940404942019285, lowerbound = 0.3290874856636194, upperbound = 0.43417012044902736)</code></pre><p>The inferred parameters are close to nominal values</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Basic Usage</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Monday 15 June 2020 10:51">Monday 15 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
