@@ -12,7 +12,7 @@ tdata=randn(1000) .* 0.04 .+ 2;
 
 # we are ofcourse able to simulate normal random numbers, so this constitutes our simulation
 
-sim((μ,σ), param) = randn(100) .* σ .+ μ;
+sim((μ,σ), param) = randn(1000) .* σ .+ μ;
 
 # The second ingredient is a prior over the parameters μ and σ
 
