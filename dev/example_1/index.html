@@ -13,33 +13,33 @@ function model(P,N)
     R
 end</code></pre><pre><code class="language-none">model (generic function with 1 method)</code></pre><p>Let&#39;s use the model to generate some data, this data will constitute our dataset</p><pre><code class="language-julia">parameters = (1.0, 0.0, 0.2, 2.0, 0.4)
 data=model(parameters,5000)</code></pre><pre><code class="language-none">5000-element Array{Float64,1}:
- -0.8100832114912498
-  0.8613772071255924
-  4.195544357212327
- -0.4191861453129837
-  1.497068576061866
-  1.4187184140983795
-  1.0508332082874001
-  1.2707614506594782
-  1.1962955186823663
- -1.182086322271081
+ -1.5853395546501916
+  1.422298978878932
+ -0.33627301891407435
+  0.17201753110593
+  0.5128753349653127
+ -3.35096773376846
+  0.7222479989503835
+ -3.2617048125641444
+  0.8861730521683289
+  1.0781995362820023
   ⋮
- -2.133298399396445
- -2.6052840118465395
-  0.4210201232228262
- -2.5639157657201483
- -0.5657598880660671
-  1.944134138704001
-  0.9969156740383108
-  0.7135775601442093
-  0.6079356119220983</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
+  4.319992805682352
+ -0.8672724378148706
+ -1.7670348249728465
+  3.1789999200413486
+ -1.6955553670623051
+  0.25723710442703973
+ -0.5246311258753343
+  2.05279637639633
+ -5.210904992304943</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
 histogram(data)</code></pre><p><img src="../ex1_hist1.svg" alt="ex1_hist1"/></p><p>we can now try to infer all parameters using <code>KissABC</code>, first of all we need to define a reasonable prior for our model</p><pre><code class="language-julia">prior=Factored(
             Uniform(0,2), # there is surely a peak between 0 and 2
             Uniform(-1,1), #there is a smeared distribution centered around 0
             Uniform(0,1), # the peak has surely a width below 1
             Uniform(0,4), # the smeared distribution surely has a width less than 4
             Beta(2,2) # the number of total events from both distributions look about the same, so we will favor 0.5 just a bit
-        );</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre><code class="language-none">(1.6201417079163827, -0.7704980400969936, 0.1587133260261857, 3.5400688716357234, 0.21575279597861263)</code></pre><p>now we need a distance function to compare datasets, this is not the best distance we could use, but it will work out anyway</p><pre><code class="language-julia">function D(x,y)
+        );</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre><code class="language-none">(1.258746960444645, -0.6795185473270964, 0.7170505137431034, 1.1346618600367249, 0.6149839958380082)</code></pre><p>now we need a distance function to compare datasets, this is not the best distance we could use, but it will work out anyway</p><pre><code class="language-julia">function D(x,y)
     r=(0.1,0.2,0.5,0.8,0.9)
     mean(abs,quantile(x,r).-quantile(y,r))
 end</code></pre><pre><code class="language-none">D (generic function with 1 method)</code></pre><p>we can now run ABCDE to get the posterior distribution of our parameters given the dataset <code>data</code></p><pre><code class="language-julia">plan=ABCplan(prior,model,data,D,params=5000)
@@ -57,8 +57,8 @@ stats=getstats.(P)
 
 for is in eachindex(stats)
     println(labels[is], &quot; ≡ &quot; ,parameters[is], &quot; → &quot;, stats[is])
-end</code></pre><pre><code class="language-none">μ_1 ≡ 1.0 → (median = 0.9918633157126999, lowerbound = 0.9434031774658015, upperbound = 1.0391378887701785)
-μ_2 ≡ 0.0 → (median = -0.027603254311228446, lowerbound = -0.10313724993654415, upperbound = 0.0583354904011294)
-σ_1 ≡ 0.2 → (median = 0.20031250836347986, lowerbound = 0.16202914130479393, upperbound = 0.2544663446392699)
-σ_2 ≡ 2.0 → (median = 2.048853137291962, lowerbound = 1.913385750580804, upperbound = 2.1374134563688583)
-prob ≡ 0.4 → (median = 0.397013284118486, lowerbound = 0.34710036538029704, upperbound = 0.43647935029424934)</code></pre><p>The inferred parameters are close to nominal values</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Basic Usage</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 16 June 2020 07:46">Tuesday 16 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><pre><code class="language-none">μ_1 ≡ 1.0 → (median = 1.005046443569865, lowerbound = 0.9653862871628678, upperbound = 1.0449606006188858)
+μ_2 ≡ 0.0 → (median = -0.03612533896982421, lowerbound = -0.12071168929267527, upperbound = 0.043542111154860876)
+σ_1 ≡ 0.2 → (median = 0.1963208884449546, lowerbound = 0.1635244738458135, upperbound = 0.23451002881970762)
+σ_2 ≡ 2.0 → (median = 2.0213835527647364, lowerbound = 1.923590278864638, upperbound = 2.1376680367716356)
+prob ≡ 0.4 → (median = 0.3879677466379231, lowerbound = 0.3447540962658226, upperbound = 0.42542250242434926)</code></pre><p>The inferred parameters are close to nominal values</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Basic Usage</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 16 June 2020 07:54">Tuesday 16 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
