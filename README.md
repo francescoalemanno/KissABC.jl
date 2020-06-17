@@ -1,4 +1,5 @@
 # KissABC
+
 ![CI](https://github.com/francescoalemanno/KissABC.jl/workflows/CI/badge.svg?branch=master)
 [![Coverage](https://codecov.io/gh/francescoalemanno/KissABC.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/francescoalemanno/KissABC.jl)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://francescoalemanno.github.io/KissABC.jl/dev)
@@ -58,7 +59,7 @@ Or, we can use `ABCDE` which is still an SMC algorithm, but with an adaptive pro
 ```julia
 res,_ = ABCDE(plan, 0.1, nparticles=200,parallel=true)
 ```
-In any case we chose a tolerance on distances equal to `0.1`, a number of simulated particles equal to `200`, we enabled Threaded parallelism, and the simulated posterior results are in `res`, while in `Δ` we can find the distances calculated for each sample.
+In any case we chose a tolerance on distances equal to `0.1`, a number of simulated particles equal to `200`, we enabled Threaded parallelism, and the simulated posterior results are in `res`, we are ignoring all the other information returned via `_`.
 We can now extract the results:
 ```julia
 prsample=[rand(prior) for i in 1:5000] #some samples from the prior for comparison

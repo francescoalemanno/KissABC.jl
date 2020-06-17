@@ -40,7 +40,7 @@ end
 plan=ABCplan(prior, sim, tdata, ksdist)
 res,_ = ABCDE(plan, 0.1, nparticles=2000,generations=150,parallel=true, verbose=false);
 
-# the parameters we chose are: a tolerance on distances equal to `0.1`, a number of simulated particles equal to `200`, we enabled Threaded parallelism, and ofcourse the first four parameters are the ingredients we set in the previous steps, the simulated posterior results are in `res`, while in `Δ` we can find the distances calculated for each sample.
+# the parameters we chose are: a tolerance on distances equal to `0.1`, a number of simulated particles equal to `200`, we enabled Threaded parallelism, and ofcourse the first four parameters are the ingredients we set in the previous steps, the simulated posterior results are in `res`, while the `_` is there to simply ignore all the other returned information.
 # We can now extract the inference results:
 
 prsample=[rand(prior) for i in 1:2000] #some samples from the prior for comparison
