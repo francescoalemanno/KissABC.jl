@@ -45,25 +45,22 @@ function S(x)
 end
 
 # we will define a function to use the `model` and summarize it's results
-summ_model(P,N) = S(model(P,N))
+summ_model(P,N) = S(model(P,N));
 
 # now we need a distance function to compare different summary statistics
-function D(x,y)
-    sqrt(mean(abs2,x.-y))
-end
+D(x,y) = sqrt(mean(abs2,x.-y));
+
 
 # we can now run ABCDE to get the posterior distribution of our parameters given the dataset `data`
 plan=ABCplan(prior,summ_model,S(data),D,params=5000)
-res,_=ABCDE(plan,0.05,verbose=true,parallel=true,generations=100);
+res,_=ABCDE(plan,0.05,verbose=false,parallel=true,generations=100);
 
 # let's see the median and 95% confidence interval for the inferred parameters and let's compare them with the true values
-function getstats(V)
-    (
+getstats(V) = (
         median=median(V),
         lowerbound=quantile(V,0.025),
         upperbound=quantile(V,0.975)
-    )
-end
+    );
 
 labels=(:μ_1, :μ_2, :σ_1, :σ_2, :prob)
 P=[getindex.(res,i) for i in 1:5]
