@@ -12,16 +12,13 @@ Function for `ABCDE` whose purpose is computing `sample + γ (r1 - r2) + ϵ` (th
 deperturb
 
 function deperturb(prior::Factored{N},sample,r1,r2,γ) where N
-    τ=rand(1:N)
-    idx=randperm(N)[1:τ]
+    coeffs=ntuple(Val(N)) do i
+        rand((1.0,0.1))
+    end
     λ=0.2*(rand()-0.5) # CU(-0.1,0.1)
-    corr_γ=γ*sqrt(N/τ)*(1+λ)
+    corr_γ=γ*sqrt(N/sum(coeffs))*(1+λ)
     ntuple(Val(N)) do i
-        if i ∈ idx
-            return deperturb(prior.p[i],sample[i],r1[i],r2[i],corr_γ)
-        else
-            return sample[i]
-        end
+        return deperturb(prior.p[i],sample[i],r1[i],r2[i],coeffs[i]*corr_γ)
     end
 end
 
