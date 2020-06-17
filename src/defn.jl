@@ -116,7 +116,8 @@ function chisq_diagnostic(prior,Δs,ϵ)
     eff_eps=eff_ϵ(prior,Δs)
     chisq=abs2(eff_eps/ϵ)
     filterparts=(n+1):N
-    optsamples=sum(x->x<2,cumsum((sort(Δs)./ϵ).^2)[filterparts]./(filterparts .- n))+n
+    chis=cumsum((sort(Δs)./ϵ).^2)[filterparts]./(filterparts .- n)
+    optsamples=sum(i->chis[i]<1+3sqrt(2/i),eachindex(chis))+n
     (red_chisq=chisq, ess=optsamples, eff_ϵ=eff_eps)
 end
 

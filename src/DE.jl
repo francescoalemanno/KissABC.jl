@@ -80,7 +80,7 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, 
             s = i
             ϵ = ifelse(Δs[i] <= ϵ_target, ϵ_target, ϵ_pop)
             if Δs[i] > ϵ
-                s=rand((1:nparticles)[Δs .<= Δs[i]])
+                s = rand(1:nparticles)
             end
             a = s
             while a == s
@@ -104,7 +104,7 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, 
         θs = nθs
         Δs = nΔs
         ncomplete = 1 - sum(Δs .> ϵ_target) / nparticles
-        if verbose && (ncomplete != complete || complete >= (nparticles - 1) / nparticles)
+        if verbose
             @info "Finished run:" completion=ncomplete nsim = sum(nsims) range_ϵ = extrema(Δs)
         end
         complete=ncomplete
@@ -133,6 +133,7 @@ This method uses a kernel function to accept or reject samples on the hypothesis
 function KABCDE(plan::ABCplan, ϵ; nparticles=100, generations=100, parallel=false, verbose=true)
     @assert ϵ>0 "ϵ must be greater than zero, since ϵ represents the kernel bandwidth"
     @extract_params plan prior distance simulation data params
+    @assert nparticles>length(prior)
     θs,Δs=sample_plan(plan,nparticles,parallel)
     nsims=zeros(Int,nparticles)
     γ = 2.38/sqrt(2*length(prior))
@@ -164,14 +165,18 @@ function KABCDE(plan::ABCplan, ϵ; nparticles=100, generations=100, parallel=fal
         end
         θs = nθs
         Δs = nΔs
+        diagnostic=chisq_diagnostic(prior,Δs,ϵ)
         if verbose
-            diagnostic=chisq_diagnostic(prior,Δs,ϵ)
             @info "Finished run:" nsim = sum(nsims) range_ϵ = extrema(Δs) reduced_χ²=diagnostic.red_chisq ESS=diagnostic.ess effective_ϵ=diagnostic.eff_ϵ
+        end
+        if diagnostic.red_chisq<=1+3*sqrt(2/(nparticles-length(prior)))
+            verbose && @info "Reached target χ²ᵣ, terminating"
+            break
         end
     end
     if verbose
         diagnostic=chisq_diagnostic(prior,Δs,ϵ)
-        @info "Last run:" nsim = sum(nsims) range_ϵ = extrema(Δs) reduced_χ²=diagnostic.red_chisq ESS=diagnostic.ess effective_ϵ=diagnostic.eff_ϵ
+        @info "Status:" nsim = sum(nsims) range_ϵ = extrema(Δs) reduced_χ²=diagnostic.red_chisq ESS=diagnostic.ess effective_ϵ=diagnostic.eff_ϵ
     end
     ws=logJ.(Δs)
     goodsamples=isfinite.(ws) .& (!isnan).(ws)
