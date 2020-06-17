@@ -13,449 +13,41 @@ function model(P,N)
     R
 end</code></pre><pre><code class="language-none">model (generic function with 1 method)</code></pre><p>Let&#39;s use the model to generate some data, this data will constitute our dataset</p><pre><code class="language-julia">parameters = (1.0, 0.0, 0.2, 2.0, 0.4)
 data=model(parameters,5000)</code></pre><pre><code class="language-none">5000-element Array{Float64,1}:
- -3.3576041566826516
- -2.1479809102013143
-  2.576024383001264
-  2.365826699797061
-  4.603787579321077
- -1.8021119693976273
-  2.291849648275573
- -2.3403096842902995
-  1.032150125054536
- -0.6761438799799251
+  0.883193825752707
+  0.8397017333638777
+ -0.21299757213632736
+  1.3244534357459028
+  1.1287483481544691
+  1.209764188382374
+  0.8677620771224845
+  0.8160581458418664
+  0.8683633317521909
+  1.1271188775702115
   ⋮
-  0.9078508266792912
- -1.2823247394835746
-  1.8874839906025183
-  1.3328985869808976
-  3.355420505492716
-  2.619808542340107
-  1.8186825648725484
-  0.12790420664048377
- -1.514837494497687</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
+  1.5980834768602101
+  0.7701563890078517
+ -1.7760590344175036
+  1.2604141071532076
+  0.7284915426847782
+ -2.2455121696238205
+  0.98506071359615
+ -0.7199199252633712
+  0.9574412440528817</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
 histogram(data)</code></pre><p><img src="../ex1_hist1.svg" alt="ex1_hist1"/></p><p>we can now try to infer all parameters using <code>KissABC</code>, first of all we need to define a reasonable prior for our model</p><pre><code class="language-julia">prior=Factored(
             Uniform(0,2), # there is surely a peak between 0 and 2
             Uniform(-1,1), #there is a smeared distribution centered around 0
             Uniform(0,1), # the peak has surely a width below 1
             Uniform(0,4), # the smeared distribution surely has a width less than 4
             Beta(2,2) # the number of total events from both distributions look about the same, so we will favor 0.5 just a bit
-        );</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre><code class="language-none">(0.44669467922876294, -0.8554806145539295, 0.743338398942142, 1.6185840526826203, 0.6207835043026969)</code></pre><p>now we need a function to compute summary statistics for our data, this is not the optimal choice, but it will work out anyway</p><pre><code class="language-julia">function S(x)
+        );</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre><code class="language-none">(0.5724032244469188, 0.07214811333628779, 0.9219962423019528, 0.8595528389812124, 0.5552556844778159)</code></pre><p>now we need a function to compute summary statistics for our data, this is not the optimal choice, but it will work out anyway</p><pre><code class="language-julia">function S(x)
     r=(0.1,0.2,0.5,0.8,0.9)
     quantile(x,r)
-end</code></pre><pre><code class="language-none">S (generic function with 1 method)</code></pre><p>we will define a function to use the <code>model</code> and summarize it&#39;s results</p><pre><code class="language-julia">summ_model(P,N) = S(model(P,N))</code></pre><pre><code class="language-none">summ_model (generic function with 1 method)</code></pre><p>now we need a distance function to compare different summary statistics</p><pre><code class="language-julia">function D(x,y)
-    sqrt(mean(abs2,x.-y))
-end</code></pre><pre><code class="language-none">D (generic function with 1 method)</code></pre><p>we can now run ABCDE to get the posterior distribution of our parameters given the dataset <code>data</code></p><pre><code class="language-julia">plan=ABCplan(prior,summ_model,S(data),D,params=5000)
-res,_=ABCDE(plan,0.05,verbose=true,parallel=true,generations=100);</code></pre><pre><code class="language-none">┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 37
-└   range_ϵ = (0.2558465381556385, 2.323089825886283)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 71
-└   range_ϵ = (0.2558465381556385, 2.323089825886283)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 104
-└   range_ϵ = (0.24439334671132742, 2.323089825886283)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 149
-└   range_ϵ = (0.24439334671132742, 2.323089825886283)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 199
-└   range_ϵ = (0.24439334671132742, 2.323089825886283)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 246
-└   range_ϵ = (0.24439334671132742, 2.323089825886283)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 292
-└   range_ϵ = (0.1919309636977194, 1.0337315600892587)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 342
-└   range_ϵ = (0.1818958043953627, 1.0337315600892587)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 392
-└   range_ϵ = (0.17020265733744033, 0.9413212254770734)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 446
-└   range_ϵ = (0.17020265733744033, 0.9130619257007375)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 507
-└   range_ϵ = (0.17020265733744033, 0.7310772999430761)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 570
-└   range_ϵ = (0.17020265733744033, 0.7261558257375857)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 629
-└   range_ϵ = (0.17020265733744033, 0.5504677630079933)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 697
-└   range_ϵ = (0.1341807724135779, 0.48308390650107563)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 769
-└   range_ϵ = (0.1341807724135779, 0.47299545140863164)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 850
-└   range_ϵ = (0.11274519070477136, 0.4380760613399636)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 923
-└   range_ϵ = (0.11274519070477136, 0.4196758512056901)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 990
-└   range_ϵ = (0.11274519070477136, 0.35718925436582927)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 1062
-└   range_ϵ = (0.07219007891394462, 0.35455309495679593)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 1133
-└   range_ϵ = (0.07219007891394462, 0.3341564635009253)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 1211
-└   range_ϵ = (0.07219007891394462, 0.3341564635009253)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 1285
-└   range_ϵ = (0.07219007891394462, 0.33293625330900856)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 1368
-└   range_ϵ = (0.07219007891394462, 0.30989726090347164)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 1452
-└   range_ϵ = (0.06905289121866129, 0.30989726090347164)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 1535
-└   range_ϵ = (0.06905289121866129, 0.29476108230804454)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 1615
-└   range_ϵ = (0.06905289121866129, 0.28705528807144065)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 1704
-└   range_ϵ = (0.06905289121866129, 0.28705528807144065)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 1790
-└   range_ϵ = (0.06905289121866129, 0.28705528807144065)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 1876
-└   range_ϵ = (0.06905289121866129, 0.28705528807144065)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 1955
-└   range_ϵ = (0.06905289121866129, 0.28705528807144065)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 2034
-└   range_ϵ = (0.06905289121866129, 0.28705528807144065)
-┌ Info: Finished run:
-│   completion = 0.0
-│   nsim = 2114
-└   range_ϵ = (0.06905289121866129, 0.23499362163982282)
-┌ Info: Finished run:
-│   completion = 0.010000000000000009
-│   nsim = 2202
-└   range_ϵ = (0.046725414414151276, 0.23499362163982282)
-┌ Info: Finished run:
-│   completion = 0.010000000000000009
-│   nsim = 2286
-└   range_ϵ = (0.046725414414151276, 0.20611309222265767)
-┌ Info: Finished run:
-│   completion = 0.010000000000000009
-│   nsim = 2372
-└   range_ϵ = (0.046725414414151276, 0.19767738041301358)
-┌ Info: Finished run:
-│   completion = 0.010000000000000009
-│   nsim = 2455
-└   range_ϵ = (0.046725414414151276, 0.19767738041301358)
-┌ Info: Finished run:
-│   completion = 0.010000000000000009
-│   nsim = 2540
-└   range_ϵ = (0.046725414414151276, 0.19767738041301358)
-┌ Info: Finished run:
-│   completion = 0.010000000000000009
-│   nsim = 2624
-└   range_ϵ = (0.046725414414151276, 0.19767738041301358)
-┌ Info: Finished run:
-│   completion = 0.010000000000000009
-│   nsim = 2717
-└   range_ϵ = (0.046725414414151276, 0.19767738041301358)
-┌ Info: Finished run:
-│   completion = 0.020000000000000018
-│   nsim = 2803
-└   range_ϵ = (0.04467087400614562, 0.19767738041301358)
-┌ Info: Finished run:
-│   completion = 0.020000000000000018
-│   nsim = 2897
-└   range_ϵ = (0.04467087400614562, 0.17442334704868126)
-┌ Info: Finished run:
-│   completion = 0.030000000000000027
-│   nsim = 2986
-└   range_ϵ = (0.04193815806564605, 0.17442334704868126)
-┌ Info: Finished run:
-│   completion = 0.050000000000000044
-│   nsim = 3070
-└   range_ϵ = (0.02848452022362789, 0.17442334704868126)
-┌ Info: Finished run:
-│   completion = 0.06000000000000005
-│   nsim = 3159
-└   range_ϵ = (0.02848452022362789, 0.17442334704868126)
-┌ Info: Finished run:
-│   completion = 0.06999999999999995
-│   nsim = 3250
-└   range_ϵ = (0.02848452022362789, 0.16587519477837884)
-┌ Info: Finished run:
-│   completion = 0.06999999999999995
-│   nsim = 3340
-└   range_ϵ = (0.02848452022362789, 0.16587519477837884)
-┌ Info: Finished run:
-│   completion = 0.08999999999999997
-│   nsim = 3428
-└   range_ϵ = (0.02848452022362789, 0.1497147032277242)
-┌ Info: Finished run:
-│   completion = 0.09999999999999998
-│   nsim = 3522
-└   range_ϵ = (0.02848452022362789, 0.14079976917707918)
-┌ Info: Finished run:
-│   completion = 0.09999999999999998
-│   nsim = 3616
-└   range_ϵ = (0.02848452022362789, 0.12507924034109927)
-┌ Info: Finished run:
-│   completion = 0.10999999999999999
-│   nsim = 3708
-└   range_ϵ = (0.02848452022362789, 0.12507924034109927)
-┌ Info: Finished run:
-│   completion = 0.10999999999999999
-│   nsim = 3800
-└   range_ϵ = (0.02848452022362789, 0.12230229720485518)
-┌ Info: Finished run:
-│   completion = 0.12
-│   nsim = 3897
-└   range_ϵ = (0.02848452022362789, 0.12230229720485518)
-┌ Info: Finished run:
-│   completion = 0.16000000000000003
-│   nsim = 3989
-└   range_ϵ = (0.02848452022362789, 0.12230229720485518)
-┌ Info: Finished run:
-│   completion = 0.21999999999999997
-│   nsim = 4086
-└   range_ϵ = (0.02846014033760322, 0.12230229720485518)
-┌ Info: Finished run:
-│   completion = 0.26
-│   nsim = 4183
-└   range_ϵ = (0.02789879844408207, 0.10912200482098303)
-┌ Info: Finished run:
-│   completion = 0.29000000000000004
-│   nsim = 4279
-└   range_ϵ = (0.02789879844408207, 0.10912200482098303)
-┌ Info: Finished run:
-│   completion = 0.35
-│   nsim = 4377
-└   range_ϵ = (0.02375563224066473, 0.09577140170987611)
-┌ Info: Finished run:
-│   completion = 0.4
-│   nsim = 4473
-└   range_ϵ = (0.02789879844408207, 0.09577140170987611)
-┌ Info: Finished run:
-│   completion = 0.48
-│   nsim = 4573
-└   range_ϵ = (0.020125669978811035, 0.08423856261848059)
-┌ Info: Finished run:
-│   completion = 0.51
-│   nsim = 4670
-└   range_ϵ = (0.012359555234661484, 0.08423856261848059)
-┌ Info: Finished run:
-│   completion = 0.55
-│   nsim = 4768
-└   range_ϵ = (0.012359555234661484, 0.08423856261848059)
-┌ Info: Finished run:
-│   completion = 0.61
-│   nsim = 4865
-└   range_ϵ = (0.012359555234661484, 0.08097269872154342)
-┌ Info: Finished run:
-│   completion = 0.6699999999999999
-│   nsim = 4963
-└   range_ϵ = (0.012359555234661484, 0.07257410362877907)
-┌ Info: Finished run:
-│   completion = 0.74
-│   nsim = 5060
-└   range_ϵ = (0.012359555234661484, 0.06838874585196321)
-┌ Info: Finished run:
-│   completion = 0.76
-│   nsim = 5159
-└   range_ϵ = (0.020125669978811035, 0.06838874585196321)
-┌ Info: Finished run:
-│   completion = 0.79
-│   nsim = 5258
-└   range_ϵ = (0.020125669978811035, 0.06350315200123777)
-┌ Info: Finished run:
-│   completion = 0.83
-│   nsim = 5355
-└   range_ϵ = (0.018443899348783963, 0.06350315200123777)
-┌ Info: Finished run:
-│   completion = 0.87
-│   nsim = 5454
-└   range_ϵ = (0.020125669978811035, 0.06350315200123777)
-┌ Info: Finished run:
-│   completion = 0.88
-│   nsim = 5554
-└   range_ϵ = (0.020125669978811035, 0.06350315200123777)
-┌ Info: Finished run:
-│   completion = 0.89
-│   nsim = 5653
-└   range_ϵ = (0.017736610822601494, 0.0626432321525328)
-┌ Info: Finished run:
-│   completion = 0.89
-│   nsim = 5753
-└   range_ϵ = (0.017736610822601494, 0.0626432321525328)
-┌ Info: Finished run:
-│   completion = 0.9
-│   nsim = 5852
-└   range_ϵ = (0.017736610822601494, 0.0626432321525328)
-┌ Info: Finished run:
-│   completion = 0.92
-│   nsim = 5952
-└   range_ϵ = (0.017736610822601494, 0.056781027882295956)
-┌ Info: Finished run:
-│   completion = 0.92
-│   nsim = 6050
-└   range_ϵ = (0.02158976574290425, 0.056781027882295956)
-┌ Info: Finished run:
-│   completion = 0.9299999999999999
-│   nsim = 6148
-└   range_ϵ = (0.02158976574290425, 0.056781027882295956)
-┌ Info: Finished run:
-│   completion = 0.9299999999999999
-│   nsim = 6245
-└   range_ϵ = (0.015274154748372244, 0.056781027882295956)
-┌ Info: Finished run:
-│   completion = 0.95
-│   nsim = 6343
-└   range_ϵ = (0.015274154748372244, 0.056781027882295956)
-┌ Info: Finished run:
-│   completion = 0.96
-│   nsim = 6443
-└   range_ϵ = (0.014328337913007973, 0.056781027882295956)
-┌ Info: Finished run:
-│   completion = 0.96
-│   nsim = 6543
-└   range_ϵ = (0.014328337913007973, 0.052610482831012655)
-┌ Info: Finished run:
-│   completion = 0.96
-│   nsim = 6642
-└   range_ϵ = (0.02079874489073898, 0.052610482831012655)
-┌ Info: Finished run:
-│   completion = 0.96
-│   nsim = 6740
-└   range_ϵ = (0.02079874489073898, 0.052610482831012655)
-┌ Info: Finished run:
-│   completion = 0.96
-│   nsim = 6838
-└   range_ϵ = (0.021001945477524077, 0.052610482831012655)
-┌ Info: Finished run:
-│   completion = 0.97
-│   nsim = 6938
-└   range_ϵ = (0.021258290539585886, 0.05255918047769786)
-┌ Info: Finished run:
-│   completion = 0.97
-│   nsim = 7035
-└   range_ϵ = (0.021258290539585886, 0.05255918047769786)
-┌ Info: Finished run:
-│   completion = 0.97
-│   nsim = 7132
-└   range_ϵ = (0.021258290539585886, 0.05255918047769786)
-┌ Info: Finished run:
-│   completion = 0.97
-│   nsim = 7230
-└   range_ϵ = (0.017257960125183963, 0.05255918047769786)
-┌ Info: Finished run:
-│   completion = 0.98
-│   nsim = 7330
-└   range_ϵ = (0.010879772431025891, 0.05088393766820069)
-┌ Info: Finished run:
-│   completion = 0.98
-│   nsim = 7429
-└   range_ϵ = (0.010879772431025891, 0.05088393766820069)
-┌ Info: Finished run:
-│   completion = 0.98
-│   nsim = 7527
-└   range_ϵ = (0.010879772431025891, 0.05088393766820069)
-┌ Info: Finished run:
-│   completion = 0.98
-│   nsim = 7626
-└   range_ϵ = (0.021805843321366612, 0.05088393766820069)
-┌ Info: Finished run:
-│   completion = 0.99
-│   nsim = 7726
-└   range_ϵ = (0.021805843321366612, 0.05088393766820069)
-┌ Info: Finished run:
-│   completion = 0.99
-│   nsim = 7825
-└   range_ϵ = (0.014447013505107374, 0.05088393766820069)
-┌ Info: Finished run:
-│   completion = 0.99
-│   nsim = 7923
-└   range_ϵ = (0.014447013505107374, 0.05088393766820069)
-┌ Info: Finished run:
-│   completion = 0.99
-│   nsim = 8022
-└   range_ϵ = (0.014447013505107374, 0.05088393766820069)
-┌ Info: Finished run:
-│   completion = 0.99
-│   nsim = 8122
-└   range_ϵ = (0.014447013505107374, 0.05088393766820069)
-┌ Info: Finished run:
-│   completion = 0.99
-│   nsim = 8219
-└   range_ϵ = (0.014447013505107374, 0.05088393766820069)
-┌ Info: Finished run:
-│   completion = 0.99
-│   nsim = 8319
-└   range_ϵ = (0.02065772628810997, 0.05088393766820069)
-┌ Info: Finished run:
-│   completion = 0.99
-│   nsim = 8419
-└   range_ϵ = (0.02065772628810997, 0.05088393766820069)
-┌ Info: Finished run:
-│   completion = 0.99
-│   nsim = 8517
-└   range_ϵ = (0.02065772628810997, 0.05088393766820069)
-┌ Info: Finished run:
-│   completion = 0.99
-│   nsim = 8616
-└   range_ϵ = (0.02065772628810997, 0.05088393766820069)
-┌ Info: End:
-│   completion = 0.99
-│   converged = false
-│   nsim = 8616
-└   range_ϵ = (0.02065772628810997, 0.05088393766820069)</code></pre><p>let&#39;s see the median and 95% confidence interval for the inferred parameters and let&#39;s compare them with the true values</p><pre><code class="language-julia">function getstats(V)
-    (
+end</code></pre><pre><code class="language-none">S (generic function with 1 method)</code></pre><p>we will define a function to use the <code>model</code> and summarize it&#39;s results</p><pre><code class="language-julia">summ_model(P,N) = S(model(P,N));</code></pre><p>now we need a distance function to compare different summary statistics</p><pre><code class="language-julia">D(x,y) = sqrt(mean(abs2,x.-y));</code></pre><p>we can now run ABCDE to get the posterior distribution of our parameters given the dataset <code>data</code></p><pre><code class="language-julia">plan=ABCplan(prior,summ_model,S(data),D,params=5000)
+res,_=ABCDE(plan,0.05,verbose=false,parallel=true,generations=100);</code></pre><p>let&#39;s see the median and 95% confidence interval for the inferred parameters and let&#39;s compare them with the true values</p><pre><code class="language-julia">getstats(V) = (
         median=median(V),
         lowerbound=quantile(V,0.025),
         upperbound=quantile(V,0.975)
-    )
-end
+    );
 
 labels=(:μ_1, :μ_2, :σ_1, :σ_2, :prob)
 P=[getindex.(res,i) for i in 1:5]
@@ -463,8 +55,8 @@ stats=getstats.(P)
 
 for is in eachindex(stats)
     println(labels[is], &quot; ≡ &quot; ,parameters[is], &quot; → &quot;, stats[is])
-end</code></pre><pre><code class="language-none">μ_1 ≡ 1.0 → (median = 1.0266829131458137, lowerbound = 0.9435231044960449, upperbound = 1.103695276824458)
-μ_2 ≡ 0.0 → (median = 0.0009708940681686005, lowerbound = -0.07906199671775994, upperbound = 0.08508017899984979)
-σ_1 ≡ 0.2 → (median = 0.1945013112229045, lowerbound = 0.12779284555208226, upperbound = 0.278048994309755)
-σ_2 ≡ 2.0 → (median = 1.954325482221508, lowerbound = 1.7694657021451563, upperbound = 2.1184399754972074)
-prob ≡ 0.4 → (median = 0.37877124648100324, lowerbound = 0.31130622290646687, upperbound = 0.4331515242689922)</code></pre><p>The inferred parameters are close to nominal values</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Basic Usage</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 17 June 2020 18:43">Wednesday 17 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><pre><code class="language-none">μ_1 ≡ 1.0 → (median = 0.982708654964352, lowerbound = 0.9122404415563987, upperbound = 1.0543262460737302)
+μ_2 ≡ 0.0 → (median = 0.03917977810086641, lowerbound = -0.07035061726229588, upperbound = 0.12107240634631522)
+σ_1 ≡ 0.2 → (median = 0.19217862244926726, lowerbound = 0.13026089148208303, upperbound = 0.2647554079451311)
+σ_2 ≡ 2.0 → (median = 2.0166390805360335, lowerbound = 1.842247775928677, upperbound = 2.1801583004371903)
+prob ≡ 0.4 → (median = 0.3825883615411271, lowerbound = 0.3145649754989826, upperbound = 0.43905022345258243)</code></pre><p>The inferred parameters are close to nominal values</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Basic Usage</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 17 June 2020 18:49">Wednesday 17 June 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
