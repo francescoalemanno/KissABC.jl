@@ -59,7 +59,9 @@ end
     @test abs((mean(P)-1/sqrt(2))/0.02)<3
     P,w=ABCDE(plan,0.02,nparticles=2000,verbose=false)
     @test abs((mean(P)-1/sqrt(2))/0.02)<3
-    P,w=KABCDE(plan,0.02,nparticles=2000,generations=1000,verbose=false)
+    res=KABCDE(plan,0.02,nparticles=2000,generations=1000,verbose=false)
+    P=res.samples
+    w=res.weights
     @test abs((mean(P.*w)/mean(w)-1/sqrt(2))/(3*0.02))<3
 end
 
@@ -88,7 +90,9 @@ end
     stat=[sim(P[i],1) for i in eachindex(P)]
     @show mean(stat)
     @test abs((mean(stat)-5.5)/std(stat)) < 1
-    P,w,d = KABCDE(plan,0.025,generations=1000,verbose=true)
+    res = KABCDE(plan,0.025,generations=1000,verbose=true)
+    P=res.samples
+    w=res.weights
     stat=[sim(P[i],1) for i in eachindex(P)]
     @show mean(stat)
     @test abs((sum(stat.*w)-5.5)/std(stat)) < 1
@@ -127,7 +131,9 @@ end
     @test abs((mean(getindex.(res,1))-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
     @show mean(getindex.(res,1)),std(getindex.(res,1))
     @show mean(getindex.(res,2)),std(getindex.(res,2))
-    res,w,d=KABCDE(plan,0.3,generations=100,parallel=true,verbose=false)
+    res=KABCDE(plan,0.3,generations=100,parallel=true,verbose=false)
+    w=res.weights
+    res=res.samples
     @test abs((sum(getindex.(res,2).*w)-2)/std(getindex.(res,2)))<4/sqrt(length(w))
     @test abs((sum(getindex.(res,1).*w)-0.5)/std(getindex.(res,1)))<4/sqrt(length(w))
     @show mean(getindex.(res,1)),std(getindex.(res,1))
@@ -162,7 +168,7 @@ end
     @test testst("ABCSMCPR",res2)
     @test testst("ABCDE",res3)
     @test testst("KABCDE",res6)
-    @test !testst("ABCDE ES",res5) #do not remove the not operator
+    @test !testst("ABCDE ES",res5.*400) #do not remove the not operator
     @test testst("ABC",res4)
 end
 
@@ -189,7 +195,7 @@ function dist(s, s0)
 end
 plan=ABCplan(Factored(Uniform(0,1), Uniform(0.5,1)), sim, [2.2, 0.4], dist)
 
-res,del,conv=KABCDE(plan, 0.2, nparticles=100,generations=24,parallel=true)
+res,del,conv=ABCDE(plan, 0.01, nparticles=100,earlystop=true,parallel=true)
 del
 using Statistics
 function getCI(x::Vector{<:Number})
@@ -199,7 +205,7 @@ function getCI(x::Vector{<:Tuple})
     [getCI(getindex.(x,i)) for i in 1:length(x[1])]
 end
 
-via getCI(res)
+getCI(res)
 240 generations:
  [0.48958933397111065, 0.4924062224370781, 0.49559446402487584]
  [0.879783065265908, 0.8816472031816496, 0.8835803050367947]

@@ -18,7 +18,5 @@ function ABC(plan::ABCplan, α_target;
     simparticles=ceil(Int,nparticles/α_target)
     particles,distances=sample_plan(plan,simparticles,parallel)
     idx=sortperm(distances)[1:nparticles]
-    (particles=particles[idx],
-     distances=distances[idx],
-     ϵ=distances[idx[end]])
+    return_particles(prior,particles[idx],distances[idx])
 end

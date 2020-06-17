@@ -95,7 +95,7 @@ function ABCSMCPR(plan::ABCplan, ϵ_target;
             @warn "Failed to reach target ϵ.\n   possible fix: increase maximum number of simulations"
         end
     end
-    θs,Δs
+    return_particles(prior,θs,Δs)
 end
 
 

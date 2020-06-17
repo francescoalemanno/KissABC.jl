@@ -121,4 +121,8 @@ function chisq_diagnostic(prior,Δs,ϵ)
     (red_chisq=chisq, ess=optsamples, eff_ϵ=eff_eps)
 end
 
+function return_particles(prior,θs,Δs;kwargs...)
+    (samples=θs,kwargs...,distances=Δs,effective_ϵ=eff_ϵ(prior,Δs))
+end
+
 export eff_ϵ, chisq_diagnostic

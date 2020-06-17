@@ -113,7 +113,7 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, 
     if verbose
         @info "End:" completion = complete converged = conv nsim = sum(nsims) range_ϵ = extrema(Δs)
     end
-    θs, Δs, conv
+    return_particles(prior,θs,Δs)
 end
 
 """
@@ -184,7 +184,7 @@ function KABCDE(plan::ABCplan, ϵ; nparticles=100, generations=100, parallel=fal
     Δs=Δs[goodsamples]
     ws=ws[goodsamples]
     ws = exp.(ws) ./ sum( exp.(ws) )
-    (samples=θs, weights=ws, errors=Δs)
+    return_particles(prior,θs,Δs,weights=ws)
 end
 
 export ABCDE, KABCDE

@@ -38,18 +38,23 @@ prior=Factored(
 
 # let's look at a sample from the prior, to see that it works
 rand(prior)
-# now we need a distance function to compare datasets, this is not the best distance we could use, but it will work out anyway
-function D(x,y)
+# now we need a function to compute summary statistics for our data, this is not the optimal choice, but it will work out anyway
+function S(x)
     r=(0.1,0.2,0.5,0.8,0.9)
-    mean(abs,quantile(x,r).-quantile(y,r))
+    quantile(x,r)
+end
+
+# we will define a function to use the `model` and summarize it's results
+summ_model(P,N) = S(model(P,N))
+
+# now we need a distance function to compare different summary statistics
+function D(x,y)
+    sqrt(mean(abs2,x.-y))
 end
 
 # we can now run ABCDE to get the posterior distribution of our parameters given the dataset `data`
-plan=ABCplan(prior,model,data,D,params=5000)
-res,Δ,converged=ABCDE(plan,0.02,parallel=true,generations=500,verbose=false);
-
-# Has it converged to the target tolerance?
-print("Converged = ",converged)
+plan=ABCplan(prior,summ_model,S(data),D,params=5000)
+res,_=ABCDE(plan,0.05,verbose=true,parallel=true,generations=100);
 
 # let's see the median and 95% confidence interval for the inferred parameters and let's compare them with the true values
 function getstats(V)

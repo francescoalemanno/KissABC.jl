@@ -52,11 +52,11 @@ plan = ABCplan(prior, sim, tdata, ksdist)
 where ofcourse the four parameters are the ingredients we defined earlier in the previous steps, and then
 we can use `ABCSMCPR` which is sequential Monte Carlo algorithm to simulate the posterior distribution for this model
 ```julia
-res,Δ = ABCSMCPR(plan, 0.1, nparticles=200,parallel=true)
+res,_ = ABCSMCPR(plan, 0.1, nparticles=200,parallel=true)
 ```
 Or, we can use `ABCDE` which is still an SMC algorithm, but with an adaptive proposal, which is much more efficient
 ```julia
-res,Δ = ABCDE(plan, 0.1, nparticles=200,parallel=true)
+res,_ = ABCDE(plan, 0.1, nparticles=200,parallel=true)
 ```
 In any case we chose a tolerance on distances equal to `0.1`, a number of simulated particles equal to `200`, we enabled Threaded parallelism, and the simulated posterior results are in `res`, while in `Δ` we can find the distances calculated for each sample.
 We can now extract the results:
@@ -78,4 +78,4 @@ This package currently implements 3 algorithms whose details can be found in Doc
 1. `ABC` this is a standard rejection algorithm, you can find examples in `test/runtests.jl`
 1. `ABCSMCPR` this is the sequential monte carlo algorithm by Drovandi et al. 2011, you can find an examples in `test/runtests.jl`
 1. `ABCDE` this is the population monte carlo algorithm based on differential evolution by B.M. Turner 2012, you can find an examples in `test/runtests.jl`
-1. `KABCDE` this is the kernel sequential monte carlo algorithm based on differential evolution by B.M. Turner 2012, you can find an examples in `test/runtests.jl` (this algorithm tends to be the most sample efficient)
+1. `KABCDE` this is the kernel sequential monte carlo algorithm based on differential evolution by B.M. Turner 2012, you can find an examples in `test/runtests.jl`

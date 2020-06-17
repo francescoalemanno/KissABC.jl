@@ -38,7 +38,7 @@ end
 # Now we are all set, we can use `ABCDE` which is sequential Monte Carlo algorithm with an adaptive proposal, to simulate the posterior distribution for this model, inferring μ and σ
 
 plan=ABCplan(prior, sim, tdata, ksdist)
-res,Δ = ABCDE(plan, 0.1, nparticles=2000,generations=150,parallel=true, verbose=false);
+res,_ = ABCDE(plan, 0.1, nparticles=2000,generations=150,parallel=true, verbose=false);
 
 # the parameters we chose are: a tolerance on distances equal to `0.1`, a number of simulated particles equal to `200`, we enabled Threaded parallelism, and ofcourse the first four parameters are the ingredients we set in the previous steps, the simulated posterior results are in `res`, while in `Δ` we can find the distances calculated for each sample.
 # We can now extract the inference results:
