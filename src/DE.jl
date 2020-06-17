@@ -116,16 +116,6 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, 
     θs, Δs, conv
 end
 
-function chisq_diagnostic(prior,Δs,ϵ)
-    N=length(Δs)
-    n=length(prior)
-    eff_eps=sqrt(sum(abs2,Δs)/(N-n))
-    chisq=abs2(eff_eps/ϵ)
-    filterparts=(n+1):N
-    optsamples=sum(x->x<2,cumsum((sort(Δs)./ϵ).^2)[filterparts]./(filterparts .- n))+n
-    (red_chisq=chisq,ess=optsamples,eff_ϵ=eff_eps)
-end
-
 """
     KABCDE(plan, ϵ; nparticles=100, generations=100, parallel=false, verbose=true)
 

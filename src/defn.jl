@@ -103,3 +103,21 @@ function sample_plan(plan::ABCplan,nparticles,parallel)
     end
     θs,Δs
 end
+
+function eff_ϵ(prior,Δ)
+    N=length(Δ)
+    n=length(prior)
+    return sqrt(sum(abs2,Δ)/(N-n))
+end
+
+function chisq_diagnostic(prior,Δs,ϵ)
+    N=length(Δs)
+    n=length(prior)
+    eff_eps=eff_ϵ(prior,Δs)
+    chisq=abs2(eff_eps/ϵ)
+    filterparts=(n+1):N
+    optsamples=sum(x->x<2,cumsum((sort(Δs)./ϵ).^2)[filterparts]./(filterparts .- n))+n
+    (red_chisq=chisq, ess=optsamples, eff_ϵ=eff_eps)
+end
+
+export eff_ϵ, chisq_diagnostic
