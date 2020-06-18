@@ -75,7 +75,7 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, 
         ϵ_pop = max(ϵ_target,ϵ_l + α * (ϵ_h - ϵ_l))
         @cthreads parallel for i in 1:nparticles
             if earlystop
-                Δs[i] <= ϵ_target && continue
+                Δs[i] <= ϵ_pop && continue
             end
             s = i
             ϵ = ifelse(Δs[i] <= ϵ_target, ϵ_target, ϵ_pop)
@@ -94,7 +94,7 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, 
             w_prior = pdf(prior,θp) / pdf(prior,θs[i])
             rand() > min(1,w_prior) && continue
             xp = simulation(θp, params)
-            nsims[i]+=1
+            nsims[i] += 1
             dp = distance(xp,data)
             if dp <= max(ϵ, Δs[i])
                 nΔs[i] = dp
@@ -135,7 +135,7 @@ function KABCDE(plan::ABCplan, ϵ; nparticles=100, generations=100, parallel=fal
     @extract_params plan prior distance simulation data params
     @assert nparticles>length(prior)
     θs,Δs=sample_plan(plan,nparticles,parallel)
-    nsims=zeros(Int,nparticles)
+    nsims=zeros(Int,Threads.nthreads())
     γ = 2.38/sqrt(2*length(prior))
     iters=0
     kernel=Normal(oftype(ϵ,0),ϵ)
@@ -155,7 +155,7 @@ function KABCDE(plan::ABCplan, ϵ; nparticles=100, generations=100, parallel=fal
             end
             θp = deperturb(prior,θs[i],θs[a],θs[b],γ)
             xp = simulation(θp, params)
-            nsims[i]+=1
+            nsims[Threads.threadid()]+=1
             dp = distance(xp,data)
             log_w=logpdf(prior,θp)-logpdf(prior,θs[i])+logJ(dp)-logJ(Δs[i])
             if log(rand()) <= min(0,log_w)

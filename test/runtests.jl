@@ -195,8 +195,8 @@ function dist(s, s0)
 end
 plan=ABCplan(Factored(Uniform(0,1), Uniform(0.5,1)), sim, [2.2, 0.4], dist)
 
-res,del,conv=ABCDE(plan, 0.01, nparticles=100,earlystop=true,parallel=true)
-del
+res=ABCDE(plan, 0.01, nparticles=100,earlystop=true,parallel=true)
+
 using Statistics
 function getCI(x::Vector{<:Number})
     quantile(x,[0.25,0.5,0.75])
@@ -205,7 +205,7 @@ function getCI(x::Vector{<:Tuple})
     [getCI(getindex.(x,i)) for i in 1:length(x[1])]
 end
 
-getCI(res)
+getCI(res.samples)
 240 generations:
  [0.48958933397111065, 0.4924062224370781, 0.49559446402487584]
  [0.879783065265908, 0.8816472031816496, 0.8835803050367947]
