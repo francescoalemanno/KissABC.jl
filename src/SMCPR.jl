@@ -44,8 +44,10 @@ function ABCSMCPR(plan::ABCplan, ϵ_target;
     Nα=ceil(Int,α*nparticles)
     @assert 2<Nα<nparticles-1
     maxsimulations=nparticles*maxsimpp
-    θs,Δs=sample_plan(plan,nparticles,parallel)
-    numsim=Atomic{Int}(nparticles)
+    θs,Δs=let rejsample=ABC(plan, 0.5, nparticles=nparticles, parallel=parallel)
+        rejsample.samples, rejsample.distances
+    end
+    numsim=Atomic{Int}(2*nparticles)
     numaccepted=Atomic{Int}(Nα)
     Rt=ceil(Int,log(c)/log(1.0-α))
     while true

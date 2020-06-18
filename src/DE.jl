@@ -59,8 +59,11 @@ A population monte carlo algorithm inspired by differential evolution, very effi
 function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, parallel=false, earlystop=false, verbose=true)
     @assert 0<=α<1 "α must be in 0 <= α < 1."
     @extract_params plan prior distance simulation data params
-    θs,Δs=sample_plan(plan,nparticles,parallel)
-    nsims=zeros(Int,nparticles)
+    θs,Δs=let rejsample=ABC(plan, 0.5, nparticles=nparticles, parallel=parallel)
+        rejsample.samples, rejsample.distances
+    end
+    nsims=zeros(Int,Threads.nthreads())
+    nsims[1]+=2*nparticles
     γ = 2.38/sqrt(2*length(prior))
     iters=0
     complete=1-sum(Δs.>ϵ_target)/nparticles
@@ -94,7 +97,7 @@ function ABCDE(plan::ABCplan, ϵ_target; nparticles=100, generations=500, α=0, 
             w_prior = pdf(prior,θp) / pdf(prior,θs[i])
             rand() > min(1,w_prior) && continue
             xp = simulation(θp, params)
-            nsims[i] += 1
+            nsims[Threads.threadid()]+=1
             dp = distance(xp,data)
             if dp <= max(ϵ, Δs[i])
                 nΔs[i] = dp
@@ -134,8 +137,11 @@ function KABCDE(plan::ABCplan, ϵ; nparticles=100, generations=100, parallel=fal
     @assert ϵ>0 "ϵ must be greater than zero, since ϵ represents the kernel bandwidth"
     @extract_params plan prior distance simulation data params
     @assert nparticles>length(prior)
-    θs,Δs=sample_plan(plan,nparticles,parallel)
+    θs,Δs=let rejsample=ABC(plan, 0.5, nparticles=nparticles, parallel=parallel)
+        rejsample.samples, rejsample.distances
+    end
     nsims=zeros(Int,Threads.nthreads())
+    nsims[1]+=2*nparticles
     γ = 2.38/sqrt(2*length(prior))
     iters=0
     kernel=Normal(oftype(ϵ,0),ϵ)
