@@ -26,4 +26,5 @@ makedocs(;
 
 deploydocs(;
     repo="github.com/francescoalemanno/KissABC.jl",
+    push_preview=true
 )
