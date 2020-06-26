@@ -1,36 +1,103 @@
-"""
-    KissABC
-Module to perform approximate bayesian computation,
-
-Simple Example:
-inferring the mean of a `Normal` distribution
-```julia
-using KissABC
-using Distributions
-
-prior=Normal(0,1)
-data=randn(1000) .+ 1
-sim(μ,other)=randn(1000) .+ μ
-dist(x,y) = abs(mean(x) - mean(y))
-
-plan=ABCplan(prior, sim, data, dist)
-μ_post,Δ = ABCDE(plan, 1e-2)
-@show mean(μ_post) ≈ 1.0
-```
-
-for more complicated code examples look at `https://github.com/francescoalemanno/KissABC.jl/`
-"""
 module KissABC
-
 using Base.Threads
 using Distributions
 using Random
+using ProgressMeter
+import Base.length
 
-include("defn.jl")
-include("ABCREJ.jl")
-include("DE.jl")
-include("SMCPR.jl")
+macro cthreads(condition::Symbol,loop)
+    return esc(quote
+        if $condition
+            Threads.@threads $loop
+        else
+            $loop
+        end
+    end)
+end
 
-export ABCplan, ABC, ABCSMCPR, Factored, sample_plan
+include("types.jl")
+include("priors.jl")
 
+function de_propose(rng::AbstractRNG, density::AbstractApproxDensity, particles::AbstractVector, i::Int, inactive_particles::AbstractVector, perturbator::AbstractPerturbator)
+    γ = 2.38/sqrt(2*length(density))*exp(randn(rng)*0.1)
+    b=a=rand(rng,inactive_particles)
+    while b==a; b=rand(rng,inactive_particles); end
+    tostartingsupport(particles[i],
+        particles[i] +′ ((particles[a] -′ particles[b]) *′ γ) +′ (perturbator *′ triangle_abs(particles[a],particles[b],particles[i]) *′ (0.001*γ))
+    )
+end
+
+function ais_move_propose(rng::AbstractRNG, density::AbstractApproxDensity, particles::AbstractVector, i::Int, inactive_particles::AbstractVector, perturbator::AbstractPerturbator)
+    c=b=a=rand(rng,inactive_particles)
+    while b==a; b=rand(rng,inactive_particles); end
+    while c==a || c==b; c=rand(rng,inactive_particles); end
+    Xs=(particles[a] +′ particles[b] +′ particles[c]) /′ 3
+    W=(randn(rng) *′ (particles[a] -′ Xs)) +′ (randn(rng) *′ (particles[b] -′ Xs)) +′ (randn(rng) *′ (particles[c] -′ Xs))
+    tostartingsupport(particles[i], particles[i] +′ W)
+end
+
+function propose(rng::AbstractRNG, density::AbstractApproxDensity, particles::AbstractVector, i::Int, inactive_particles::AbstractVector, perturbator::AbstractPerturbator)
+    if rand(rng)<0.5
+        return de_propose(rng,density,particles,i,inactive_particles,perturbator)
+    end
+    return ais_move_propose(rng,density,particles,i,inactive_particles,perturbator)
+end
+
+function kernel_mcmc!(density::AbstractApproxDensity, particles::AbstractVector, logdensity::AbstractVector,
+                            perturbator::AbstractPerturbator, inactive_particles::AbstractVector, particle_index::Int, rng::AbstractRNG)
+    p  = propose(rng,density, particles, particle_index, inactive_particles, perturbator)
+    ld = loglike(density,p)
+    if accept(density, rng, logdensity[particle_index], ld)
+        particles[particle_index] = p
+        logdensity[particle_index] = ld
+        return true
+    end
+    return false
+end
+
+function mcmc!(density::AbstractApproxDensity,particles::AbstractVector,logdensity::AbstractVector; generations, rng::AbstractRNG = Random.GLOBAL_RNG, parallel=false, verbose=0)
+    pert = Perturbator(rng)
+    nparticles = length(particles)
+    sep=nparticles÷2
+    ensembles = ( (1:sep, (sep+1):nparticles),
+                  ((sep+1):nparticles, 1:sep) )
+    p=(verbose>=1) ? Progress(generations,ifelse(verbose>2,-Inf,0.25)) : nothing
+    accepted=zeros(Int,ifelse(parallel,Threads.nthreads(),1))
+    for reps in 1:generations
+        accepted.=0
+        for (active, inactive) in ensembles
+            @cthreads parallel for i in active
+                ai=ifelse(parallel,Threads.threadid(),1)
+                kernel_mcmc!(density, particles, logdensity, pert, inactive, i, rng) && (accepted[ai]+=1)
+            end
+        end
+        if verbose >=1
+            stats=[(:generation,reps),(:acceptance_rate,sum(accepted)/nparticles)]
+            if verbose >= 2
+                μp=foldl((x,y)-> x +′ (y/′nparticles),view(particles,2:nparticles),init=particles[1]/′nparticles)
+                σp=sqrt′(foldl((x,y)-> x +′ (((y-′μp)*′(y-′μp))/′nparticles),view(particles,2:nparticles),init=((particles[1]-′μp)*′(particles[1]-′μp))/′nparticles)) *′ sqrt(nparticles/(nparticles-1))
+                stats=[stats...,(:avg_particle,μp ),(:std_particle,σp )]
+            end
+            if reps==generations
+                finish!(p; showvalues = stats)
+            else
+                next!(p; showvalues = stats)
+            end
+        end
+    end
+    nothing
+end
+
+function mcmc(density::AbstractApproxDensity,particles::AbstractVector; generations, rng::AbstractRNG = Random.GLOBAL_RNG, parallel=false, verbose=0)
+    logdensity = [loglike(density,particles[i]) for i in eachindex(particles)]
+    mcmc!(density, particles, logdensity; generations=generations, rng = rng, parallel=parallel, verbose=verbose)
+    particles, logdensity
+end
+
+function mcmc(density::AbstractApproxDensity;nparticles::Int, generations, rng::AbstractRNG = Random.GLOBAL_RNG, parallel=false, verbose=2)
+    particles = [unconditional_sample(rng,density) for i in 1:nparticles]
+    mcmc(density, particles, generations=generations, rng = rng, parallel=parallel, verbose=verbose)
+end
+
+export mcmc, mcmc!
 end
