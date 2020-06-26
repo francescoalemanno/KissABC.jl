@@ -1,10 +1,10 @@
 abstract type AbstractApproxDensity end
-
+#=
 unconditional_sample(rng::AbstractRNG,density::AbstractApproxDensity) = error("define a method to cover unconditional_sample(rng::AbstractRNG,density::"*repr(typeof(density))*").")
 loglike(density::AbstractApproxDensity,sample) = error("define a method to cover logpdf(density::"*repr(typeof(density))*",sample). must return a named tuple (logprior = ?, loglikelihood = ?)")
 length(density::AbstractApproxDensity) = error("define a method to cover length(density::"*repr(typeof(density))*").")
 accept(density::AbstractApproxDensity,rng::AbstractRNG,old_ld,new_ld) = error("define a method to cover accept(density::"*repr(typeof(density))*",rng::AbstractRNG,old_ld,new_ld). must return boolean to accept or reject a transition from old_ld → new_ld")
-
+=#
 
 abstract type AbstractPerturbator end
 struct Perturbator <: AbstractPerturbator
