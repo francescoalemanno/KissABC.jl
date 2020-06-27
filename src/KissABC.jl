@@ -36,6 +36,19 @@ function ais_move_propose(rng::AbstractRNG, density::AbstractApproxDensity, part
     tostartingsupport(particles[i], particles[i] +′ W)
 end
 
+"Inverse cdf of g-pdf, see eq. 10 of Foreman-Mackey et al. 2013."
+cdf_g_inv(u, a) = (u*(sqrt(a)-sqrt(1/a)) + sqrt(1/a) )^2
+
+"Sample from g using inverse transform sampling.  a=2.0 is recommended."
+sample_g(a) = cdf_g_inv(rand(), a)
+
+function ais_stretch_propose(rng::AbstractRNG, density::AbstractApproxDensity, particles::AbstractVector, i::Int, inactive_particles::AbstractVector, perturbator::AbstractPerturbator)
+    a=rand(rng,inactive_particles)
+    Z=sample_g(2.0)
+    W=(particles[a] -′ particles[i]) *′ Z
+    tostartingsupport(particles[i], particles[i] +′ W), (length(density)-1)*log(Z)
+end
+
 function propose(rng::AbstractRNG, density::AbstractApproxDensity, particles::AbstractVector, i::Int, inactive_particles::AbstractVector, perturbator::AbstractPerturbator)
     if rand(rng)<0.5
         return de_propose(rng,density,particles,i,inactive_particles,perturbator)
