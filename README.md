@@ -1,7 +1,7 @@
 # KissABC
 
 ![CI](https://github.com/JuliaApproxInference/KissABC.jl/workflows/CI/badge.svg?branch=master)
-[![Coverage](http://codecov.io/github/JuliaApproxInference/KissABC.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/francescoalemanno/KissABC.jl)
+[![Coverage](http://codecov.io/github/JuliaApproxInference/KissABC.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaApproxInference/KissABC.jl)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://juliaapproxinference.github.io/KissABC.jl/dev)
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://juliaapproxinference.github.io/KissABC.jl/stable/)
 
