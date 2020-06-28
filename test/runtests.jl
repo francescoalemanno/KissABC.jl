@@ -227,3 +227,28 @@ tight_layout()
 PyPlot.savefig("../images/inf_normaldist.png")
 
 =#
+#=
+
+using ApproxInferenceProblems,Distributions,KissABC
+normalizep(X)=X./sum(X)
+problem = ApproxInferenceProblem(BlowFly,T=1000,statistics = y -> normalizep(diff([count(x->x<=α,y) for α in 14:16:16014])) )
+problem.model(rand(problem.prior))
+function cost(X)
+    s=problem.model(X)
+    costs=0.0
+    N=0.0
+    for i in eachindex(s)
+        if s[i]>0 && problem.data[i]>0
+            costs+=abs(s[i]-problem.data[i])/(problem.data[i]+s[i])
+            N+=1
+        end
+    end
+    costs/N
+end
+cost(rand(problem.prior))
+approx_density = ApproxPosterior(problem.prior,cost,0.01)
+
+mcmc(approx_density,nparticles=100,generations=5000,parallel=true)
+
+problem.target
+=#
