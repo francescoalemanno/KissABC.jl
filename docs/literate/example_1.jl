@@ -55,7 +55,7 @@ D(P, N = 5000) = sqrt(mean(abs2, summ_data .- summ_model(P, N)));
 
 # we can now run ABCDE to get the posterior distribution of our parameters given the dataset `data`
 approx_density = ApproxPosterior(prior, D, 0.05)
-res, _ = mcmc(approx_density, nparticles = 100, generations = 500)
+res, _ = mcmc(approx_density, nparticles = 100, generations = 500, verbose = 0)
 
 # let's see the median and 95% confidence interval for the inferred parameters and let's compare them with the true values
 getstats(V) =

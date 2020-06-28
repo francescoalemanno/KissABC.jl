@@ -174,15 +174,16 @@ quantile.(DiscreteNonParametric(getindex.(res,2),del),[0.25,0.5,0.75])
 #=
 using KissABC
 using Distributions
-using StatsBase
 
 function cost((μ,σ))
     x=randn(1000) .* σ .+ μ
-    sqrt(sum(abs2,(mean(x)-2.0,std(x)-0.04)./(2.0,0.04)))
+    d1=mean(x)-2.0
+    d2=std(x)-0.04
+    hypot(d1,d2*50)
 end
 
 prior=Factored(Uniform(1,3),Truncated(Normal(0,0.05),0,100))
-plan=ApproxPosterior(prior,cost,0.001)
+plan=ApproxKernelizedPosterior(prior,cost,0.005)
 res,_=mcmc(plan,nparticles=10000,generations=500,parallel=true)
 
 prsample=[rand(prior) for i in 1:10000]
@@ -196,32 +197,29 @@ mean(μ_p),std(μ_p)
 mean(σ_p),std(σ_p)
 
 cd(@__DIR__); pwd()
-function dilateextrema(X)
-    E=quantile(X,[0.005,0.995])
-    return (1.05,1.05).*(E.-mean(E)).+mean(E)
-end
+
 using PyPlot
 pygui(true)
 figure(figsize=1.5 .*(7.5,7.5).*(1,(sqrt(5)-1)/2),dpi=200)
 subplot(2,2,1)
 title("PRIOR")
-hist(μ_pr,150,histtype="step",label=L" π(μ)",density=true,range=dilateextrema(μ_pr))
+hist(μ_pr,150,histtype="step",label=L" π(μ)",density=true,range=(0.95,3.05))
 
 legend()
 xlabel(L"\mu")
 subplot(2,2,2)
 title("POSTERIOR")
-hist(μ_p,150,histtype="step",label=L" P(μ|{\rm data})",density=true,range=dilateextrema(μ_p))
+hist(μ_p,150,histtype="step",label=L" P(μ|{\rm data})",density=true,range=(1.9,2.1))
 
 legend()
 xlabel(L"\mu")
 subplot(2,2,3)
-hist(σ_pr,150,histtype="step",label=L" π(σ)",density=true,range=dilateextrema(σ_pr))
+hist(σ_pr,150,histtype="step",label=L" π(σ)",density=true,range=(-0.005,0.3))
 
 xlabel(L"\sigma")
 legend()
 subplot(2,2,4)
-hist(σ_p,150,histtype="step",label=L" P(σ|{\rm data})",density=true,range=dilateextrema(σ_p))
+hist(σ_p,150,histtype="step",label=L" P(σ|{\rm data})",density=true,range=(0.02,0.06))
 
 xlabel(L"\sigma")
 legend()

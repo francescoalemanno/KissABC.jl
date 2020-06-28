@@ -100,4 +100,26 @@ accept(density::ApproxPosterior, rng::AbstractRNG, old_ld, new_ld, ld_correction
     (-randexp(rng) <= ld_correction + new_ld.logprior - old_ld.logprior) &&
     new_ld.cost <= max(density.maxcost, old_ld.cost)
 
+
+"""
+    ApproxKernelizedPosterior(
+        prior::Distribution,
+        cost::Function,
+        target_average_cost::Real
+    )
+this function will return a type which can be used in the `mcmc` function as an ABC density,
+this type works by assuming Gaussianly distributed errors 𝒩(0,ϵ), ϵ is specified in the variable `target_average_cost`.
+"""
+ApproxKernelizedPosterior
+"""
+    ApproxPosterior(
+        prior::Distribution,
+        cost::Function,
+        max_cost::Real
+    )
+this function will return a type which can be used in the `mcmc` function as an ABC density,
+this type works by assuming uniformly distributed errors in [-ϵ,ϵ], ϵ is specified in the variable `max_cost`.
+"""
+ApproxKernelizedPosterior
+
 export ApproxPosterior, ApproxKernelizedPosterior

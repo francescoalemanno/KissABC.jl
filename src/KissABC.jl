@@ -118,7 +118,7 @@ function kernel_mcmc!(
     return false
 end
 
-function mcmc!(
+function _mcmc!(
     density::AbstractApproxDensity,
     particles::AbstractVector,
     logdensity::AbstractVector;
@@ -168,7 +168,7 @@ function mcmc!(
     nothing
 end
 
-function mcmc(
+function _mcmc(
     density::AbstractApproxDensity,
     particles::AbstractVector;
     generations,
@@ -180,7 +180,7 @@ function mcmc(
         loglike(density, tostartingsupport(densitytypes(density), particles[i]))
         for i in eachindex(particles)
     ]
-    mcmc!(
+    _mcmc!(
         density,
         particles,
         logdensity;
@@ -192,6 +192,18 @@ function mcmc(
     particles, logdensity
 end
 
+"""
+    function mcmc(
+        density::AbstractApproxDensity;
+        nparticles::Int,
+        generations,
+        rng::AbstractRNG = Random.GLOBAL_RNG,
+        parallel = false,
+        verbose = 2,
+    )
+This function will run an Affine Invariant MC sampler on the ABC density defined in `density`,
+the ensemble will contain `nparticles` particles, and each particle will evolve for a total number of steps equal to `generations`.
+"""
 function mcmc(
     density::AbstractApproxDensity;
     nparticles::Int,
@@ -200,16 +212,21 @@ function mcmc(
     parallel = false,
     verbose = 2,
 )
-    particles = [floatize(unconditional_sample(rng, density)) for i = 1:nparticles]
-    mcmc(
+    particles, loglikes = _mcmc(
         density,
-        particles,
+        [floatize(unconditional_sample(rng, density)) for i = 1:nparticles],
         generations = generations,
         rng = rng,
         parallel = parallel,
         verbose = verbose,
     )
+    pushed_particles = [
+        tostartingsupport(densitytypes(density), particles[i])
+        for i in eachindex(particles)
+    ]
+
+    pushed_particles, loglikes
 end
 
-export mcmc, mcmc!
+export mcmc
 end

@@ -22,21 +22,20 @@ prior = Factored(Uniform(1, 3), Truncated(Normal(0, 0.1), 0, 100));
 
 # we have chosen a uniform distribution over the interval [1,3] for μ and a normal distribution truncated over ℝ⁺ for σ.
 #
-# Now all that we need is a distance function to compare the true dataset to the simulated dataset, for this purpose a Kolmogorov-Smirnoff distance is good
+# Now all that we need is a distance function to compare the true dataset to the simulated dataset, for this purpose comparing mean and std is optimal
 
-using StatsBase
-function ksdist(x, y)
+function dist(x, y)
     d1 = mean(x) - mean(y)
     d2 = std(x) - std(y)
     hypot(d1, d2 * 50)
 end
 
-# Now we are all set, we can use `ABCDE` which is sequential Monte Carlo algorithm with an adaptive proposal, to simulate the posterior distribution for this model, inferring μ and σ
-cost(x) = ksdist(tdata, sim(x))
+# Now we are all set, we can use `mcmc` which is Affine Invariant MC algorithm, to simulate the posterior distribution for this model, inferring μ and σ
+cost(x) = dist(tdata, sim(x))
 approx_density = ApproxPosterior(prior, cost, 0.1)
-res, _ = mcmc(approx_density, nparticles = 2000, generations = 100);
+res, _ = mcmc(approx_density, nparticles = 2000, generations = 100, parallel = true, verbose = 0);
 
-# the parameters we chose are: a tolerance on distances equal to `0.1`, a number of simulated particles equal to `200`, we enabled Threaded parallelism, and ofcourse the first four parameters are the ingredients we set in the previous steps, the simulated posterior results are in `res`, while the `_` is there to simply ignore all the other returned information.
+# the parameters we chose are: a tolerance on distances equal to `0.1`, a number of simulated particles equal to `2000` and total simulations per particle to `100`, we enabled Threaded parallelism, the simulated posterior results are in `res`, while the `_` is there to simply ignore all the other returned information.
 # We can now extract the inference results:
 
 prsample = [rand(prior) for i = 1:2000] #some samples from the prior for comparison
