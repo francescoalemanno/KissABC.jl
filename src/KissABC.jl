@@ -22,9 +22,8 @@ function de_propose(rng::AbstractRNG, density::AbstractApproxDensity, particles:
     γ = 2.38/sqrt(2*length(density))*exp(randn(rng)*0.1)
     b=a=rand(rng,inactive_particles)
     while b==a; b=rand(rng,inactive_particles); end
-    tostartingsupport(particles[i],
-        particles[i] +′ ((particles[a] -′ particles[b]) *′ γ) +′ (perturbator *′ triangle_abs(particles[a],particles[b],particles[i]) *′ (0.001*γ))
-    )
+    W=((particles[a] -′ particles[b]) *′ γ) +′ (perturbator *′ triangle_abs(particles[a],particles[b],particles[i]) *′ (0.001*γ))
+    particles[i] +′ W, 0.0
 end
 
 function ais_move_propose(rng::AbstractRNG, density::AbstractApproxDensity, particles::AbstractVector, i::Int, inactive_particles::AbstractVector, perturbator::AbstractPerturbator)
@@ -33,34 +32,33 @@ function ais_move_propose(rng::AbstractRNG, density::AbstractApproxDensity, part
     while c==a || c==b; c=rand(rng,inactive_particles); end
     Xs=(particles[a] +′ particles[b] +′ particles[c]) /′ 3
     W=(randn(rng) *′ (particles[a] -′ Xs)) +′ (randn(rng) *′ (particles[b] -′ Xs)) +′ (randn(rng) *′ (particles[c] -′ Xs))
-    tostartingsupport(particles[i], particles[i] +′ W)
+    particles[i] +′ W, 0.0
 end
 
 "Inverse cdf of g-pdf, see eq. 10 of Foreman-Mackey et al. 2013."
 cdf_g_inv(u, a) = (u*(sqrt(a)-sqrt(1/a)) + sqrt(1/a) )^2
 
 "Sample from g using inverse transform sampling.  a=2.0 is recommended."
-sample_g(a) = cdf_g_inv(rand(), a)
+sample_g(rng::AbstractRNG,a) = cdf_g_inv(rand(rng), a)
 
 function ais_stretch_propose(rng::AbstractRNG, density::AbstractApproxDensity, particles::AbstractVector, i::Int, inactive_particles::AbstractVector, perturbator::AbstractPerturbator)
     a=rand(rng,inactive_particles)
-    Z=sample_g(2.0)
-    W=(particles[a] -′ particles[i]) *′ Z
-    tostartingsupport(particles[i], particles[i] +′ W), (length(density)-1)*log(Z)
+    Z=sample_g(rng,3.0)
+    W=(particles[i] -′ particles[a]) *′ Z
+    particles[a] +′ W, (length(density)-1)*log(Z)
 end
 
 function propose(rng::AbstractRNG, density::AbstractApproxDensity, particles::AbstractVector, i::Int, inactive_particles::AbstractVector, perturbator::AbstractPerturbator)
-    if rand(rng)<0.5
-        return de_propose(rng,density,particles,i,inactive_particles,perturbator)
-    end
+    rand(rng)<2/3 && return ais_stretch_propose(rng,density,particles,i,inactive_particles,perturbator)
+    rand(rng)<2/3 && return de_propose(rng,density,particles,i,inactive_particles,perturbator)
     return ais_move_propose(rng,density,particles,i,inactive_particles,perturbator)
 end
 
 function kernel_mcmc!(density::AbstractApproxDensity, particles::AbstractVector, logdensity::AbstractVector,
                             perturbator::AbstractPerturbator, inactive_particles::AbstractVector, particle_index::Int, rng::AbstractRNG)
-    p  = propose(rng,density, particles, particle_index, inactive_particles, perturbator)
-    ld = loglike(density,p)
-    if accept(density, rng, logdensity[particle_index], ld)
+    p, ld_correction  = propose(rng,density, particles, particle_index, inactive_particles, perturbator)
+    ld = loglike(density,tostartingsupport(densitytypes(density),p))
+    if accept(density, rng, logdensity[particle_index], ld, ld_correction)
         particles[particle_index] = p
         logdensity[particle_index] = ld
         return true
@@ -102,13 +100,13 @@ function mcmc!(density::AbstractApproxDensity,particles::AbstractVector,logdensi
 end
 
 function mcmc(density::AbstractApproxDensity,particles::AbstractVector; generations, rng::AbstractRNG = Random.GLOBAL_RNG, parallel=false, verbose=0)
-    logdensity = [loglike(density,particles[i]) for i in eachindex(particles)]
+    logdensity = [loglike(density,tostartingsupport(densitytypes(density),particles[i])) for i in eachindex(particles)]
     mcmc!(density, particles, logdensity; generations=generations, rng = rng, parallel=parallel, verbose=verbose)
     particles, logdensity
 end
 
 function mcmc(density::AbstractApproxDensity;nparticles::Int, generations, rng::AbstractRNG = Random.GLOBAL_RNG, parallel=false, verbose=2)
-    particles = [unconditional_sample(rng,density) for i in 1:nparticles]
+    particles = [floatize(unconditional_sample(rng,density)) for i in 1:nparticles]
     mcmc(density, particles, generations=generations, rng = rng, parallel=parallel, verbose=verbose)
 end
 

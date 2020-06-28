@@ -48,7 +48,7 @@ end
     nparticles=5000
     modelabc=ApproxPosterior(pri,x->sum(abs,model(x,0).-tinydata),0.1)
 
-    results=mcmc(modelabc;nparticles=nparticles,generations=100,parallel=true)
+    results=mcmc(modelabc;nparticles=nparticles,generations=500,parallel=true)
     bs_median=[median(rand(getindex.(results[1],1),nparticles)) for i in 1:500]
     μ=mean(bs_median)
     @test abs(μ-43.6) < 1
@@ -96,7 +96,7 @@ end
     prior=Factored(Uniform(0,1),Uniform(0,4))
     cost(x)=sum(abs,brownianrms(x,30).-tdata)/length(tdata)
     modelabc=ApproxPosterior(prior,cost,0.01)
-    sim=mcmc(modelabc,nparticles=50,generations=50)
+    sim=mcmc(modelabc,nparticles=50,generations=150)
     @test all(abs.(((mean(getindex.(sim[1],1)),mean(getindex.(sim[1],2))).-params)./params).<(0.1,0.1))
 end
 
@@ -107,10 +107,10 @@ end
     prior=Uniform(-10,10)
     sim(μ) = μ+rand((randn()*0.1,randn()))
     cost(x)=abs(sim(x)-0.0)
-    plan=ApproxPosterior(prior,cost,0.01/sqrt(2))
-    res,_ = mcmc(plan,nparticles=4000,generations=500)
-    plan=ApproxKernelizedPosterior(prior,cost,0.01)
-    resk,_ = mcmc(plan,nparticles=4000,generations=500)
+    plan=ApproxPosterior(prior,cost,0.01)
+    res,_ = mcmc(plan,nparticles=2000,generations=10000)
+    plan=ApproxKernelizedPosterior(prior,cost,0.01/sqrt(2))
+    resk,_ = mcmc(plan,nparticles=2000,generations=10000)
     testst(alg,r) = begin
         m = mean(abs,st(r)-st_n)
         println(":",alg,": testing m = ",m)
@@ -130,6 +130,7 @@ end
 
 #benchmark
 #=
+using KissABC, Distributions, Random
 function cost((u1, p1); n=10^6, raw=false)
  u2 = (1.0 - u1*p1)/(1.0 - p1)
  x = randexp(n) .* ifelse.(rand(n) .< p1, u1, u2)
@@ -139,7 +140,7 @@ end
 
 plan=ApproxPosterior(Factored(Uniform(0,1), Uniform(0.5,1)), cost, 0.01)
 
-@show res=mcmc(plan, nparticles=100,generations=60,parallel=true)
+@show res=mcmc(plan, nparticles=100,generations=125,parallel=true)
 
 using Statistics
 function getCI(x::Vector{<:Number})

@@ -33,9 +33,6 @@ end
 triangle_abs(a::T, b::T, c::T) where T<:SingleLike =(abs(a-b)+abs(c-b)+abs(c-a))/3
 triangle_abs(a::T, b::T, c::T) where T<:MultiLike = triangle_abs.(a,b,c)
 
-tostartingsupport(S::T,A) where T<:MultiLike = tostartingsupport.(S,A)
-tostartingsupport(S::T,A) where T<:SingleLike  = A
-tostartingsupport(S::T,A) where T<:Integer  = round(T,A)
 
 sqrt′(a::T) where T<:SingleLike = sqrt(a)
 sqrt′(a::T) where T<:MultiLike = sqrt′.(a)
@@ -44,18 +41,32 @@ abstract type AbstractApproxPosterior <: AbstractApproxDensity end
 unconditional_sample(rng::AbstractRNG,density::AbstractApproxPosterior) = rand(rng,density.prior)
 length(density::AbstractApproxPosterior) = length(density.prior)
 
+
+densitytypes(S::AbstractApproxPosterior) = densitytypes(S.prior)
+densitytypes(S::ContinuousDistribution) = Float64
+densitytypes(S::DiscreteDistribution) = Int64
+
+floatize(S) = floatize.(S)
+floatize(S::Number) = convert(Float64,S)
+
+tostartingsupport(S,A::T) where T<:MultiLike = tostartingsupport.(S,A)
+tostartingsupport(S::Type{<:Integer},A::T) where T<:SingleLike  = round(S,A)
+tostartingsupport(S::Type{<:AbstractFloat},A::T) where T<:SingleLike  = A
+
 struct ApproxKernelizedPosterior{P <: Distribution,C,S <: Real} <: AbstractApproxPosterior
     prior::P
     cost::C
     scale::S
     ApproxKernelizedPosterior(prior::T1, cost::T2, target_average_cost::T3) where {T1,T2,T3} = new{T1,T2,T3}(prior,cost,target_average_cost)
 end
+
 function loglike(density::ApproxKernelizedPosterior,sample)
     lp = logpdf(density.prior,sample)
     isfinite(lp) || return (logprior = lp, loglikelihood = lp)
     (logprior = lp, loglikelihood = - 0.5*abs2(density.cost(sample)/density.scale))
 end
-accept(density::ApproxKernelizedPosterior,rng::AbstractRNG,old_ld,new_ld) = -randexp(rng) <= sum(new_ld)-sum(old_ld)
+
+accept(density::ApproxKernelizedPosterior,rng::AbstractRNG,old_ld,new_ld,ld_correction) = -randexp(rng) <= ld_correction+sum(new_ld)-sum(old_ld)
 
 struct ApproxPosterior{P <: Distribution,C,S <: Real} <: AbstractApproxPosterior
     prior::P
@@ -63,12 +74,13 @@ struct ApproxPosterior{P <: Distribution,C,S <: Real} <: AbstractApproxPosterior
     maxcost::S
     ApproxPosterior(prior::T1, cost::T2, max_cost::T3) where {T1,T2,T3} = new{T1,T2,T3}(prior,cost,max_cost)
 end
+
 function loglike(density::ApproxPosterior,sample)
     lp = logpdf(density.prior,sample)
     isfinite(lp) || return (logprior = lp, cost = -lp)
     (logprior = lp, cost = density.cost(sample))
 end
-accept(density::ApproxPosterior,rng::AbstractRNG,old_ld,new_ld) = (-randexp(rng) <= new_ld.logprior-old_ld.logprior) && new_ld.cost <= max(density.maxcost,old_ld.cost)
 
+accept(density::ApproxPosterior,rng::AbstractRNG,old_ld,new_ld, ld_correction) = (-randexp(rng) <= ld_correction+new_ld.logprior-old_ld.logprior) && new_ld.cost <= max(density.maxcost,old_ld.cost)
 
 export ApproxPosterior, ApproxKernelizedPosterior
