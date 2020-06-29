@@ -9,7 +9,6 @@ Table of Contents
 =================
 
   * [Beginners Usage Guide](#usage-guide)
-  * [Details](#details)
 
 ## Usage guide
 
@@ -25,7 +24,7 @@ tdata=randn(1000).*0.04.+2
 ```
 we are ofcourse able to simulate normal random numbers, so this constitutes our simulation
 ```julia
-sim((μ,σ), param) = randn(1000) .* σ .+ μ
+sim((μ,σ)) = randn(1000) .* σ .+ μ
 ```
 The second ingredient is a prior over the parameters μ and σ
 ```julia
@@ -35,31 +34,21 @@ prior=Factored(Uniform(1,3), Truncated(Normal(0,0.1), 0, 100))
 ```
 we have chosen a uniform distribution over the interval [1,3] for μ and a normal distribution truncated over ℝ⁺ for σ.
 
-Now all that we need is a distance function to compare the true dataset to the simulated dataset, for this purpose a Kolmogorov-Smirnoff distance is good
+Now all that we need is a distance function to compare the true dataset to the simulated dataset, for this purpose comparing mean and variance is optimal,
 ```julia
-using StatsBase
-function ksdist(x,y)
-    p1=ecdf(x)
-    p2=ecdf(y)
-    r=[x;y]
-    maximum(abs.(p1.(r)-p2.(r)))
+function cost(x)
+    y=tdata
+    d1 = mean(x) - mean(y)
+    d2 = std(x) - std(y)
+    hypot(d1, d2 * 50)
 end
 ```
-Now we are all set, first we define an `ABCplan` via
-
+Now we are all set, we can use `mcmc` which is Affine Invariant MC algorithm, to simulate the posterior distribution for this model, inferring μ and σ
 ```julia
-plan = ABCplan(prior, sim, tdata, ksdist)
+approx_density = ApproxKernelizedPosterior(prior,cost,0.005)
+res, _ = mcmc(approx_density, nparticles = 2000, generations = 500, parallel = true);
 ```
-where ofcourse the four parameters are the ingredients we defined earlier in the previous steps, and then
-we can use `ABCSMCPR` which is sequential Monte Carlo algorithm to simulate the posterior distribution for this model
-```julia
-res,_ = ABCSMCPR(plan, 0.1, nparticles=200,parallel=true)
-```
-Or, we can use `ABCDE` which is still an SMC algorithm, but with an adaptive proposal, which is much more efficient
-```julia
-res,_ = ABCDE(plan, 0.1, nparticles=200,parallel=true)
-```
-In any case we chose a tolerance on distances equal to `0.1`, a number of simulated particles equal to `200`, we enabled Threaded parallelism, and the simulated posterior results are in `res`, we are ignoring all the other information returned via `_`.
+We chose a tolerance on distances equal to `0.1`, a number of simulated particles equal to `2000`, we chose a number of steps per particles `generations = 500` and we enabled Threaded parallelism, and the simulated posterior results are in `res`, we are ignoring all the other information returned via `_`.
 We can now extract the results:
 ```julia
 prsample=[rand(prior) for i in 1:5000] #some samples from the prior for comparison
@@ -72,11 +61,3 @@ and plotting prior and posterior side by side we get:
 
 ![plots of the Inference Results](images/inf_normaldist.png "Inference Results")
 we can see that the algorithm has correctly inferred both parameters, this exact recipe will work for much more complicated models and simulations, with some tuning.
-
-## Details
-This package currently implements 4 algorithms whose details can be found in Docs
-
-1. `ABC` this is a standard rejection algorithm, you can find examples in `test/runtests.jl`
-1. `ABCSMCPR` this is the sequential monte carlo algorithm by Drovandi et al. 2011, you can find an examples in `test/runtests.jl`
-1. `ABCDE` this is the population monte carlo algorithm based on differential evolution by B.M. Turner 2012, you can find an examples in `test/runtests.jl`
-1. `KABCDE` this is the kernel sequential monte carlo algorithm based on differential evolution by B.M. Turner 2012, you can find an examples in `test/runtests.jl`
