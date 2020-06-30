@@ -33,7 +33,8 @@ end
 # Now we are all set, we can use `mcmc` which is Affine Invariant MC algorithm, to simulate the posterior distribution for this model, inferring μ and σ
 cost(x) = dist(tdata, sim(x))
 approx_density = ApproxPosterior(prior, cost, 0.1)
-res, _ = mcmc(approx_density, nparticles = 2000, generations = 100, parallel = true, verbose = 0);
+res, _ =
+    mcmc(approx_density, nparticles = 2000, generations = 100, parallel = true, verbose = 0);
 
 # the parameters we chose are: a tolerance on distances equal to `0.1`, a number of simulated particles equal to `2000` and total simulations per particle to `100`, we enabled Threaded parallelism, the simulated posterior results are in `res`, while the `_` is there to simply ignore all the other returned information.
 # We can now extract the inference results:

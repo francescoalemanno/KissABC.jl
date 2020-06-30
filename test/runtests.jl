@@ -6,126 +6,138 @@ using Random
 
 Random.seed!(1)
 @testset "Factored" begin
-    d=Factored(Uniform(0,1),Uniform(100,101))
-    @test all((0,100) .<= rand(d) .<= (1,101))
-    @test pdf(d,(0.0,0.0)) == 0.0
-    @test pdf(d,(0.5,100.5)) == 1.0
-    @test logpdf(d,(0.5,100.5)) == 0.0
-    @test logpdf(d,(0.0,0.0)) == -Inf
+    d = Factored(Uniform(0, 1), Uniform(100, 101))
+    @test all((0, 100) .<= rand(d) .<= (1, 101))
+    @test pdf(d, (0.0, 0.0)) == 0.0
+    @test pdf(d, (0.5, 100.5)) == 1.0
+    @test logpdf(d, (0.5, 100.5)) == 0.0
+    @test logpdf(d, (0.0, 0.0)) == -Inf
     @test length(d) == 2
-    m=Factored(Uniform(0.00,1.0),DiscreteUniform(1,2))
-    sample=rand(m)
-    @test 0<sample[1]<1
+    m = Factored(Uniform(0.00, 1.0), DiscreteUniform(1, 2))
+    sample = rand(m)
+    @test 0 < sample[1] < 1
     @test sample[2] == 1 || sample[2] == 2
-    @test pdf(m,sample) == 0.5
-    @test logpdf(m,sample) ≈ log(0.5)
+    @test pdf(m, sample) == 0.5
+    @test logpdf(m, sample) ≈ log(0.5)
 end
 
 
 @testset "Tiny Data, Approximate Bayesian Computation and the Socks of Karl Broman" begin
-    function model((n_socks,prop_pairs),consts)
-        n_picked=11
-        n_pairs=round(Int,prop_pairs*floor(n_socks/2))
-        n_odd=n_socks-2*n_pairs
-        socks=sort([repeat(1:n_pairs,2);(n_pairs+1):(n_pairs+n_odd)])
-        picked_socks=socks[randperm(n_socks)][1:min(n_socks,n_picked)]
-        lu=length(unique(picked_socks))
-        sample_pairs = min(n_socks,n_picked)-lu
-        sample_odds = lu-sample_pairs
-        sample_pairs,sample_odds
+    function model((n_socks, prop_pairs), consts)
+        n_picked = 11
+        n_pairs = round(Int, prop_pairs * floor(n_socks / 2))
+        n_odd = n_socks - 2 * n_pairs
+        socks = sort([repeat(1:n_pairs, 2); (n_pairs+1):(n_pairs+n_odd)])
+        picked_socks = socks[randperm(n_socks)][1:min(n_socks, n_picked)]
+        lu = length(unique(picked_socks))
+        sample_pairs = min(n_socks, n_picked) - lu
+        sample_odds = lu - sample_pairs
+        sample_pairs, sample_odds
     end
 
     prior_mu = 30
     prior_sd = 15
     prior_size = -prior_mu^2 / (prior_mu - prior_sd^2)
 
-    pr_socks=NegativeBinomial(prior_size,prior_size/(prior_mu+prior_size))
-    pr_prop=Beta(15,2)
+    pr_socks = NegativeBinomial(prior_size, prior_size / (prior_mu + prior_size))
+    pr_prop = Beta(15, 2)
 
-    pri=Factored(pr_socks,pr_prop)
+    pri = Factored(pr_socks, pr_prop)
 
-    tinydata=(0,11)
-    nparticles=5000
-    modelabc=ApproxPosterior(pri,x->sum(abs,model(x,0).-tinydata),0.1)
+    tinydata = (0, 11)
+    nparticles = 5000
+    modelabc = ApproxPosterior(pri, x -> sum(abs, model(x, 0) .- tinydata), 0.1)
 
-    results=mcmc(modelabc;nparticles=nparticles,generations=500,parallel=true)
-    bs_median=[median(rand(getindex.(results[1],1),nparticles)) for i in 1:500]
-    μ=mean(bs_median)
-    @test abs(μ-43.6) < 1
+    results = mcmc(modelabc; nparticles = nparticles, generations = 500, parallel = true)
+    bs_median = [median(rand(getindex.(results[1], 1), nparticles)) for i = 1:500]
+    μ = mean(bs_median)
+    @test abs(μ - 43.6) < 1
 end
 
 @testset "Normal dist -> Dirac Delta inference" begin
-    pri=Normal(1,0.2)
-    sim(μ)=μ*μ+1
-    cost(x)=abs(sim(x)-1.5)
-    abc=ApproxKernelizedPosterior(pri,cost,0.001)
-    res=mcmc(abc,nparticles=100,generations=100)
-    @show sum(res[1].>0)
-    @test abs(mean(sim.(res[1]))-1.5)<=0.005
+    pri = Normal(1, 0.2)
+    sim(μ) = μ * μ + 1
+    cost(x) = abs(sim(x) - 1.5)
+    abc = ApproxKernelizedPosterior(pri, cost, 0.001)
+    res = mcmc(abc, nparticles = 100, generations = 100)
+    @show sum(res[1] .> 0)
+    @test abs(mean(sim.(res[1])) - 1.5) <= 0.005
 end
 
 @testset "Normal dist + Uniform Distr -> inference" begin
-    pri=Factored(Normal(1,0.5),DiscreteUniform(1,10))
-    sim((n,du))=(n*n+du)*(n+randn()*0.1)
-    cost(x)=abs(sim(x)-5.5)
-    model_abc=ApproxPosterior(pri,cost,0.01)
-    @test abs(mean(sim.(mcmc(model_abc,nparticles=100,generations=500)[1]))-5.5)<0.2
+    pri = Factored(Normal(1, 0.5), DiscreteUniform(1, 10))
+    sim((n, du)) = (n * n + du) * (n + randn() * 0.1)
+    cost(x) = abs(sim(x) - 5.5)
+    model_abc = ApproxPosterior(pri, cost, 0.01)
+    @test abs(mean(sim.(mcmc(model_abc, nparticles = 100, generations = 500)[1])) - 5.5) <
+          0.2
 end
 
-function brownian((μ,σ),N)
-    x=zeros(2)
-    μdir=sincos(rand()*2π)
-    traj=zeros(2,N)
-    for i in 1:N
-        traj[:,i].=x
-        x.+=μ.*μdir.+randn(2).*σ
+function brownian((μ, σ), N)
+    x = zeros(2)
+    μdir = sincos(rand() * 2π)
+    traj = zeros(2, N)
+    for i = 1:N
+        traj[:, i] .= x
+        x .+= μ .* μdir .+ randn(2) .* σ
     end
-    traj.-traj[:,1:1]
+    traj .- traj[:, 1:1]
 end
-function brownianrms((μ,σ),N,samples=200)
-    trajsq=zeros(2,N)
-    for i in 1:samples
-        trajsq .+= brownian((μ,σ),N).^2 ./ samples
+function brownianrms((μ, σ), N, samples = 200)
+    trajsq = zeros(2, N)
+    for i = 1:samples
+        trajsq .+= brownian((μ, σ), N) .^ 2 ./ samples
     end
-    sqrt.(sum(trajsq,dims=1)[1,:])
+    sqrt.(sum(trajsq, dims = 1)[1, :])
 end
 
 @testset "Inference on drifted Wiener Process" begin
-    params=(0.5,2.0)
-    tdata=brownianrms(params,30,10000)
-    prior=Factored(Uniform(0,1),Uniform(0,4))
-    cost(x)=sum(abs,brownianrms(x,30).-tdata)/length(tdata)
-    modelabc=ApproxPosterior(prior,cost,0.01)
-    sim=mcmc(modelabc,nparticles=50,generations=150)
-    @test all(abs.(((mean(getindex.(sim[1],1)),mean(getindex.(sim[1],2))).-params)./params).<(0.1,0.1))
+    params = (0.5, 2.0)
+    tdata = brownianrms(params, 30, 10000)
+    prior = Factored(Uniform(0, 1), Uniform(0, 4))
+    cost(x) = sum(abs, brownianrms(x, 30) .- tdata) / length(tdata)
+    modelabc = ApproxPosterior(prior, cost, 0.01)
+    sim = mcmc(modelabc, nparticles = 50, generations = 150)
+    @test all(
+        abs.(
+            ((mean(getindex.(sim[1], 1)), mean(getindex.(sim[1], 2))) .- params) ./ params,
+        ) .< (0.1, 0.1),
+    )
 end
 
 @testset "Classical Mixture Model 0.1N+N" begin
-    st(res)=((quantile(res,0.1:0.1:0.9)-reverse(quantile(res,0.1:0.1:0.9)))/2)[1+(end-1)÷2:end]
-    st_n=[0.0, 0.04680825481526908, 0.1057221226763449, 0.2682111969397526, 0.8309228020477986]
+    st(res) =
+        ((quantile(res, 0.1:0.1:0.9)-reverse(quantile(res, 0.1:0.1:0.9)))/2)[1+(end-1)÷2:end]
+    st_n = [
+        0.0,
+        0.04680825481526908,
+        0.1057221226763449,
+        0.2682111969397526,
+        0.8309228020477986,
+    ]
 
-    prior=Uniform(-10,10)
-    sim(μ) = μ+rand((randn()*0.1,randn()))
-    cost(x)=abs(sim(x)-0.0)
-    plan=ApproxPosterior(prior,cost,0.01)
-    res,_ = mcmc(plan,nparticles=2000,generations=10000)
-    plan=ApproxKernelizedPosterior(prior,cost,0.01/sqrt(2))
-    resk,_ = mcmc(plan,nparticles=2000,generations=10000)
-    testst(alg,r) = begin
-        m = mean(abs,st(r)-st_n)
-        println(":",alg,": testing m = ",m)
-        m<0.1
+    prior = Uniform(-10, 10)
+    sim(μ) = μ + rand((randn() * 0.1, randn()))
+    cost(x) = abs(sim(x) - 0.0)
+    plan = ApproxPosterior(prior, cost, 0.01)
+    res, _ = mcmc(plan, nparticles = 2000, generations = 10000)
+    plan = ApproxKernelizedPosterior(prior, cost, 0.01 / sqrt(2))
+    resk, _ = mcmc(plan, nparticles = 2000, generations = 10000)
+    testst(alg, r) = begin
+        m = mean(abs, st(r) - st_n)
+        println(":", alg, ": testing m = ", m)
+        m < 0.1
     end
-    @test testst("Hard threshold",res)
-    @test testst("Kernelized threshold",resk)
+    @test testst("Hard threshold", res)
+    @test testst("Kernelized threshold", resk)
 end
 
 
 @testset "Usecase of issue #10" begin
-    plan=ApproxPosterior(Normal(0,1),x->abs(x-1.5),0.01)
-    res=mcmc(plan,nparticles=20,generations=100)[1]
-    @show mean(res),std(res)
-    @test abs(mean(res)-1.5)<=0.01
+    plan = ApproxPosterior(Normal(0, 1), x -> abs(x - 1.5), 0.01)
+    res = mcmc(plan, nparticles = 20, generations = 100)[1]
+    @show mean(res), std(res)
+    @test abs(mean(res) - 1.5) <= 0.01
 end
 
 #benchmark
