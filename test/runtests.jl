@@ -55,11 +55,15 @@ end
     tinydata = (0, 11)
     nparticles = 5000
     modelabc = ApproxPosterior(pri, x -> sum(abs, model(x, 0) .- tinydata), 0.1)
-
+    results_st = mcmc(modelabc; nparticles = nparticles, generations = 500, parallel = false)
     results = mcmc(modelabc; nparticles = nparticles, generations = 500, parallel = true)
     bs_median = [median(rand(getindex.(results[1], 1), nparticles)) for i = 1:500]
+    bs_median_st = [median(rand(getindex.(results[1], 1), nparticles)) for i = 1:500]
     μ = mean(bs_median)
+    μ_st = mean(bs_median_st)
     @test abs(μ - 43.6) < 1
+    @test abs(μ_st - 43.6) < 1
+    @test abs(μ - μ_st)/hypot(std(bs_median),std(bs_median_st)) < 3
 end
 
 @testset "Normal dist -> Dirac Delta inference" begin
