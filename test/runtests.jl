@@ -96,8 +96,8 @@ end
     tdata = brownianrms(params, 30, 10000)
     prior = Factored(Uniform(0, 1), Uniform(0, 4))
     cost(x) = sum(abs, brownianrms(x, 30) .- tdata) / length(tdata)
-    modelabc = ApproxPosterior(prior, cost, 0.01)
-    sim = mcmc(modelabc, nparticles = 50, generations = 150)
+    modelabc = ApproxPosterior(prior, cost, 0.02)
+    sim = mcmc(modelabc, nparticles = 50, generations = 400,parallel=true)
     @test all(
         abs.(
             ((mean(getindex.(sim[1], 1)), mean(getindex.(sim[1], 2))) .- params) ./ params,

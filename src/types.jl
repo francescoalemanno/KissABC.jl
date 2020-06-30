@@ -6,56 +6,26 @@ length(density::AbstractApproxDensity) = error("define a method to cover length(
 accept(density::AbstractApproxDensity,rng::AbstractRNG,old_ld,new_ld) = error("define a method to cover accept(density::"*repr(typeof(density))*",rng::AbstractRNG,old_ld,new_ld). must return boolean to accept or reject a transition from old_ld → new_ld")
 =#
 
-abstract type AbstractPerturbator end
-struct Perturbator <: AbstractPerturbator
-    rng::AbstractRNG
+struct Particle{Xt}
+    x::Xt
+    Particle(x::T) where T = new{T}(x)
 end
 
-function (a::Perturbator)()
-    randn(a.rng)
-end
+op(f,a::Particle,b::Particle) = Particle(op(f,a.x,b.x))
+op(f,a::Particle,b::Number) = Particle(op(f,a.x,b))
+op(f,a::Number,b::Particle) = Particle(op(f,a,b.x))
+op(f,a::Number,b::Number) = f(a,b)
+op(f,a,b) = op.(Ref(f),a,b)
 
-@inline handleperturbator(x) = x
-@inline handleperturbator(x::AbstractPerturbator) = x()
-@inline boxperturbator(x::AbstractPerturbator) = Ref(x)
-@inline boxperturbator(x) = x
-const MultiLike = Union{AbstractPerturbator,Tuple,Array,Number}
-const SingleLike = Union{AbstractPerturbator,Number}
-
-for op in (:+, :-, :*, :/)
-    opp = Symbol(op, "′")
-    @eval begin
-        $opp(a::A, b::B) where {A<:MultiLike,B<:MultiLike} =
-            $opp.(boxperturbator(a), boxperturbator(b))
-        $opp(a::A, b::B) where {A<:SingleLike,B<:SingleLike} =
-            $op(handleperturbator(a), handleperturbator(b))
-    end
-end
-
-triangle_abs(a::T, b::T, c::T) where {T<:SingleLike} =
-    (abs(a - b) + abs(c - b) + abs(c - a)) / 3
-triangle_abs(a::T, b::T, c::T) where {T<:MultiLike} = triangle_abs.(a, b, c)
-
-
-sqrt′(a::T) where {T<:SingleLike} = sqrt(a)
-sqrt′(a::T) where {T<:MultiLike} = sqrt′.(a)
+op(f,a::Particle) = Particle(op(f,a.x))
+op(f,a::Number) = f(a)
+op(f,a) = op.(Ref(f),a)
 
 abstract type AbstractApproxPosterior <: AbstractApproxDensity end
 unconditional_sample(rng::AbstractRNG, density::AbstractApproxPosterior) =
-    rand(rng, density.prior)
+    Particle(rand(rng, density.prior))
 length(density::AbstractApproxPosterior) = length(density.prior)
 
-
-densitytypes(S::AbstractApproxPosterior) = densitytypes(S.prior)
-densitytypes(S::ContinuousDistribution) = Float64
-densitytypes(S::DiscreteDistribution) = Int64
-
-floatize(S) = floatize.(S)
-floatize(S::Number) = convert(Float64, S)
-
-tostartingsupport(S, A::T) where {T<:MultiLike} = tostartingsupport.(S, A)
-tostartingsupport(S::Type{<:Integer}, A::T) where {T<:SingleLike} = round(S, A)
-tostartingsupport(S::Type{<:AbstractFloat}, A::T) where {T<:SingleLike} = A
 
 struct ApproxKernelizedPosterior{P<:Distribution,C,S<:Real} <: AbstractApproxPosterior
     prior::P
@@ -68,10 +38,10 @@ struct ApproxKernelizedPosterior{P<:Distribution,C,S<:Real} <: AbstractApproxPos
     ) where {T1,T2,T3} = new{T1,T2,T3}(prior, cost, target_average_cost)
 end
 
-function loglike(density::ApproxKernelizedPosterior, sample)
-    lp = logpdf(density.prior, sample)
+function loglike(density::ApproxKernelizedPosterior, sample::Particle)
+    lp = logpdf(density.prior, sample.x)
     isfinite(lp) || return (logprior = lp, loglikelihood = lp)
-    (logprior = lp, loglikelihood = -0.5 * abs2(density.cost(sample) / density.scale))
+    (logprior = lp, loglikelihood = -0.5 * abs2(density.cost(sample.x) / density.scale))
 end
 
 accept(
@@ -90,10 +60,10 @@ struct ApproxPosterior{P<:Distribution,C,S<:Real} <: AbstractApproxPosterior
         new{T1,T2,T3}(prior, cost, max_cost)
 end
 
-function loglike(density::ApproxPosterior, sample)
-    lp = logpdf(density.prior, sample)
+function loglike(density::ApproxPosterior, sample::Particle)
+    lp = logpdf(density.prior, sample.x)
     isfinite(lp) || return (logprior = lp, cost = -lp)
-    (logprior = lp, cost = density.cost(sample))
+    (logprior = lp, cost = density.cost(sample.x))
 end
 
 accept(density::ApproxPosterior, rng::AbstractRNG, old_ld, new_ld, ld_correction) =

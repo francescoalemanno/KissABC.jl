@@ -48,6 +48,4 @@ returns the number of distributions contained in `p`.
 """
 length(p::Factored{N}) where {N} = N
 
-densitytypes(S::Factored) = densitytypes.(S.p)
-
 export Factored
