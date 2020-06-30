@@ -15,8 +15,8 @@ macro cthreads(condition::Symbol, loop)
     end)
 end
 
-include("types.jl")
 include("priors.jl")
+include("types.jl")
 
 function de_propose(
     rng::AbstractRNG,
@@ -35,15 +35,12 @@ function de_propose(
         x -> γ * x / 300 * randn(rng),
         op(
             +,
-            op(
-                +,
-                op(abs, op(-, particles[a], particles[b])),
-                op(abs, op(-, particles[i], particles[b])),
-            ),
+            op(abs, op(-, particles[a], particles[b])),
+            op(abs, op(-, particles[i], particles[b])),
             op(abs, op(-, particles[a], particles[i])),
         ),
     )
-    op(+, particles[i], op(+, W, T)), 0.0
+    op(+, particles[i], W, T), 0.0
 end
 
 function ais_walk_propose(
@@ -63,11 +60,8 @@ function ais_walk_propose(
     Xs = op(/, op(+, particles[a], op(+, particles[b], particles[c])), 3)
     W = op(
         +,
-        op(
-            +,
-            op(*, randn(rng), op(-, particles[a], Xs)),
-            op(*, randn(rng), op(-, particles[b], Xs)),
-        ),
+        op(*, randn(rng), op(-, particles[a], Xs)),
+        op(*, randn(rng), op(-, particles[b], Xs)),
         op(*, randn(rng), op(-, particles[c], Xs)),
     )
     op(+, particles[i], W), 0.0
@@ -104,11 +98,7 @@ function propose(
     rand(rng) < 2 / 3 && return de_propose(rng, density, particles, i, inactive_particles)
     return ais_walk_propose(rng, density, particles, i, inactive_particles)
 end
-push_p(density::AbstractApproxPosterior, p::Particle) = Particle(push_p(density.prior, p.x))
-push_p(density::Factored, p) = push_p.(density.p, p)
-push_p(density::Distribution, p) = push_p.(density, p)
-push_p(density::ContinuousDistribution, p::Number) = float(p)
-push_p(density::DiscreteDistribution, p::Number) = round(Int, p)
+
 function kernel_mcmc!(
     density::AbstractApproxDensity,
     particles::AbstractVector,

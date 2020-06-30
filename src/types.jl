@@ -1,4 +1,5 @@
 abstract type AbstractApproxDensity end
+abstract type AbstractApproxPosterior <: AbstractApproxDensity end
 #=
 unconditional_sample(rng::AbstractRNG,density::AbstractApproxDensity) = error("define a method to cover unconditional_sample(rng::AbstractRNG,density::"*repr(typeof(density))*").")
 loglike(density::AbstractApproxDensity,sample) = error("define a method to cover logpdf(density::"*repr(typeof(density))*",sample). must return a named tuple (logprior = ?, loglikelihood = ?)")
@@ -21,7 +22,14 @@ op(f, a::Particle) = Particle(op(f, a.x))
 op(f, a::Number) = f(a)
 op(f, a) = op.(Ref(f), a)
 
-abstract type AbstractApproxPosterior <: AbstractApproxDensity end
+op(f, args...) = foldl((x, y) -> op(f, x, y), args)
+
+push_p(density::AbstractApproxPosterior, p::Particle) = Particle(push_p(density.prior, p.x))
+push_p(density::Factored, p) = push_p.(density.p, p)
+push_p(density::Distribution, p) = push_p.(density, p)
+push_p(density::ContinuousDistribution, p::Number) = float(p)
+push_p(density::DiscreteDistribution, p::Number) = round(Int, p)
+
 unconditional_sample(rng::AbstractRNG, density::AbstractApproxPosterior) =
     Particle(rand(rng, density.prior))
 length(density::AbstractApproxPosterior) = length(density.prior)
