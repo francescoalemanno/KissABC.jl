@@ -32,7 +32,7 @@ function de_propose(
     end
     W = op(*, op(-, particles[a], particles[b]), γ)
     T = op(
-        x -> x / 300 * randn(rng),
+        x -> γ * x / 300 * randn(rng),
         op(
             +,
             op(
