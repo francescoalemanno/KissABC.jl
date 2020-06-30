@@ -21,6 +21,14 @@ Random.seed!(1)
     @test logpdf(m, sample) ≈ log(0.5)
 end
 
+@testset "Push" begin
+    push_p=KissABC.push_p
+    a /′ b = (typeof(a)==typeof(b)) && all(a.==b)
+    @test push_p(Normal(),1) /′ 1.0
+    @test push_p(DiscreteUniform(),1.0) /′ 1
+    @test push_p(Factored(Normal(),DiscreteUniform()),(2,1.0)) /′ (2.0,1)
+    @test push_p(Product([Normal(),Normal()]),[2,1]) /′ [2.0,1.0]
+end
 
 @testset "Tiny Data, Approximate Bayesian Computation and the Socks of Karl Broman" begin
     function model((n_socks, prop_pairs), consts)
