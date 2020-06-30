@@ -23,16 +23,27 @@ function de_propose(
     density::AbstractApproxDensity,
     particles::AbstractVector,
     i::Int,
-    inactive_particles::AbstractVector
+    inactive_particles::AbstractVector,
 )
     γ = 2.38 / sqrt(2 * length(density)) * exp(randn(rng) * 0.1)
     b = a = rand(rng, inactive_particles)
     while b == a
         b = rand(rng, inactive_particles)
     end
-    W = op(*,op(-,particles[a],particles[b]),γ)
-    T = op(x->x/300*randn(rng),op(+,op(+,op(abs,op(-,particles[a],particles[b])),op(abs,op(-,particles[i],particles[b]))),op(abs,op(-,particles[a],particles[i]))))
-    op(+,particles[i],op(+,W,T)), 0.0
+    W = op(*, op(-, particles[a], particles[b]), γ)
+    T = op(
+        x -> x / 300 * randn(rng),
+        op(
+            +,
+            op(
+                +,
+                op(abs, op(-, particles[a], particles[b])),
+                op(abs, op(-, particles[i], particles[b])),
+            ),
+            op(abs, op(-, particles[a], particles[i])),
+        ),
+    )
+    op(+, particles[i], op(+, W, T)), 0.0
 end
 
 function ais_walk_propose(
@@ -40,7 +51,7 @@ function ais_walk_propose(
     density::AbstractApproxDensity,
     particles::AbstractVector,
     i::Int,
-    inactive_particles::AbstractVector
+    inactive_particles::AbstractVector,
 )
     c = b = a = rand(rng, inactive_particles)
     while b == a
@@ -49,12 +60,17 @@ function ais_walk_propose(
     while c == a || c == b
         c = rand(rng, inactive_particles)
     end
-    Xs = op(/,op(+,particles[a],op(+,particles[b],particles[c])), 3)
-    W =
-        op(+,op(+,op(*,randn(rng),op(-,particles[a],Xs)),
-        op(*,randn(rng),op(-,particles[b],Xs))),
-        op(*,randn(rng),op(-,particles[c],Xs)))
-    op(+,particles[i],W), 0.0
+    Xs = op(/, op(+, particles[a], op(+, particles[b], particles[c])), 3)
+    W = op(
+        +,
+        op(
+            +,
+            op(*, randn(rng), op(-, particles[a], Xs)),
+            op(*, randn(rng), op(-, particles[b], Xs)),
+        ),
+        op(*, randn(rng), op(-, particles[c], Xs)),
+    )
+    op(+, particles[i], W), 0.0
 end
 
 "Inverse cdf of g-pdf, see eq. 10 of Foreman-Mackey et al. 2013."
@@ -68,12 +84,12 @@ function stretch_propose(
     density::AbstractApproxDensity,
     particles::AbstractVector,
     i::Int,
-    inactive_particles::AbstractVector
+    inactive_particles::AbstractVector,
 )
     a = rand(rng, inactive_particles)
     Z = sample_g(rng, 3.0)
-    W = op(*,op(-,particles[i],particles[a]),Z)
-    op(+,particles[a],W), (length(density) - 1) * log(Z)
+    W = op(*, op(-, particles[i], particles[a]), Z)
+    op(+, particles[a], W), (length(density) - 1) * log(Z)
 end
 
 function propose(
@@ -85,15 +101,14 @@ function propose(
 )
     rand(rng) < 2 / 3 &&
         return stretch_propose(rng, density, particles, i, inactive_particles)
-    rand(rng) < 2 / 3 &&
-        return de_propose(rng, density, particles, i, inactive_particles)
+    rand(rng) < 2 / 3 && return de_propose(rng, density, particles, i, inactive_particles)
     return ais_walk_propose(rng, density, particles, i, inactive_particles)
 end
-push_p(density::AbstractApproxPosterior,p::Particle) = Particle(push_p(density.prior ,p.x))
-push_p(density::Factored,p) = push_p.(density.p,p)
-push_p(density::Distribution,p) =  push_p.(density,p)
-push_p(density::ContinuousDistribution,p::Number) = float(p)
-push_p(density::DiscreteDistribution,p::Number) = round(Int,p)
+push_p(density::AbstractApproxPosterior, p::Particle) = Particle(push_p(density.prior, p.x))
+push_p(density::Factored, p) = push_p.(density.p, p)
+push_p(density::Distribution, p) = push_p.(density, p)
+push_p(density::ContinuousDistribution, p::Number) = float(p)
+push_p(density::DiscreteDistribution, p::Number) = round(Int, p)
 function kernel_mcmc!(
     density::AbstractApproxDensity,
     particles::AbstractVector,
@@ -102,9 +117,8 @@ function kernel_mcmc!(
     particle_index::Int,
     rng::AbstractRNG,
 )
-    p, ld_correction =
-        propose(rng, density, particles, particle_index, inactive_particles)
-    ld = loglike(density, push_p(density,p))
+    p, ld_correction = propose(rng, density, particles, particle_index, inactive_particles)
+    ld = loglike(density, push_p(density, p))
     if accept(density, rng, logdensity[particle_index], ld, ld_correction)
         particles[particle_index] = p
         logdensity[particle_index] = ld
@@ -138,18 +152,20 @@ function _mcmc!(
         end
         if verbose >= 1
             stats = [(:generation, reps), (:acceptance_rate, sum(accepted) / nparticles)]
-           if verbose >= 2
+            if verbose >= 2
                 μp = foldl(
-                    (x, y) -> op(+,x,op(/,y,nparticles)),
+                    (x, y) -> op(+, x, op(/, y, nparticles)),
                     view(particles, 2:nparticles),
-                    init = op(/,particles[1],nparticles),
+                    init = op(/, particles[1], nparticles),
                 )
-                σp =
-                    op(x->sqrt(x)*sqrt(nparticles / (nparticles - 1)),foldl(
-                        (x, y) -> op(+,x,op(/,op(abs2,op(-,y,μp)),nparticles)),
+                σp = op(
+                    x -> sqrt(x) * sqrt(nparticles / (nparticles - 1)),
+                    foldl(
+                        (x, y) -> op(+, x, op(/, op(abs2, op(-, y, μp)), nparticles)),
                         view(particles, 2:nparticles),
-                        init = op(/,op(abs2,op(-,particles[1],μp)),nparticles),
-                    ))
+                        init = op(/, op(abs2, op(-, particles[1], μp)), nparticles),
+                    ),
+                )
                 stats = [stats..., (:avg_particle, μp.x), (:std_particle, σp.x)]
             end
             if reps == generations
@@ -170,10 +186,8 @@ function _mcmc(
     parallel = false,
     verbose = 0,
 )
-    logdensity = [
-        loglike(density, push_p(density,particles[i]))
-        for i in eachindex(particles)
-    ]
+    logdensity =
+        [loglike(density, push_p(density, particles[i])) for i in eachindex(particles)]
     _mcmc!(
         density,
         particles,
@@ -208,16 +222,13 @@ function mcmc(
 )
     particles, loglikes = _mcmc(
         density,
-        [op(float,unconditional_sample(rng, density)) for i = 1:nparticles],
+        [op(float, unconditional_sample(rng, density)) for i = 1:nparticles],
         generations = generations,
         rng = rng,
         parallel = parallel,
         verbose = verbose,
     )
-    pushed_particles = [
-        push_p(density,particles[i]).x
-        for i in eachindex(particles)
-    ]
+    pushed_particles = [push_p(density, particles[i]).x for i in eachindex(particles)]
 
     pushed_particles, loglikes
 end
