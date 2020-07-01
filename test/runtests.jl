@@ -21,6 +21,14 @@ Random.seed!(1)
     @test logpdf(m, sample) ≈ log(0.5)
 end
 
+@testset "Push" begin
+    push_p = KissABC.push_p
+    a /′ b = (typeof(a) == typeof(b)) && all(a .== b)
+    @test push_p(Normal(), 1) /′ 1.0
+    @test push_p(DiscreteUniform(), 1.0) /′ 1
+    @test push_p(Factored(Normal(), DiscreteUniform()), (2, 1.0)) /′ (2.0, 1)
+    @test push_p(Product([Normal(), Normal()]), [2, 1]) /′ [2.0, 1.0]
+end
 
 @testset "Tiny Data, Approximate Bayesian Computation and the Socks of Karl Broman" begin
     function model((n_socks, prop_pairs), consts)
@@ -47,11 +55,16 @@ end
     tinydata = (0, 11)
     nparticles = 5000
     modelabc = ApproxPosterior(pri, x -> sum(abs, model(x, 0) .- tinydata), 0.1)
-
+    results_st =
+        mcmc(modelabc; nparticles = nparticles, generations = 500, parallel = false)
     results = mcmc(modelabc; nparticles = nparticles, generations = 500, parallel = true)
     bs_median = [median(rand(getindex.(results[1], 1), nparticles)) for i = 1:500]
+    bs_median_st = [median(rand(getindex.(results[1], 1), nparticles)) for i = 1:500]
     μ = mean(bs_median)
+    μ_st = mean(bs_median_st)
     @test abs(μ - 43.6) < 1
+    @test abs(μ_st - 43.6) < 1
+    @test abs(μ - μ_st) / hypot(std(bs_median), std(bs_median_st)) < 3
 end
 
 @testset "Normal dist -> Dirac Delta inference" begin
@@ -73,22 +86,10 @@ end
           0.2
 end
 
-function brownian((μ, σ), N)
-    x = zeros(2)
-    μdir = sincos(rand() * 2π)
-    traj = zeros(2, N)
-    for i = 1:N
-        traj[:, i] .= x
-        x .+= μ .* μdir .+ randn(2) .* σ
-    end
-    traj .- traj[:, 1:1]
-end
 function brownianrms((μ, σ), N, samples = 200)
-    trajsq = zeros(2, N)
-    for i = 1:samples
-        trajsq .+= brownian((μ, σ), N) .^ 2 ./ samples
-    end
-    sqrt.(sum(trajsq, dims = 1)[1, :])
+    t = 0:N
+    #    rand()<1/20 && sleep(0.001)
+    @.(sqrt(μ * μ * t * t + σ * σ * t)) .* (0.95 + 0.1 * rand())
 end
 
 @testset "Inference on drifted Wiener Process" begin
@@ -96,8 +97,8 @@ end
     tdata = brownianrms(params, 30, 10000)
     prior = Factored(Uniform(0, 1), Uniform(0, 4))
     cost(x) = sum(abs, brownianrms(x, 30) .- tdata) / length(tdata)
-    modelabc = ApproxPosterior(prior, cost, 0.01)
-    sim = mcmc(modelabc, nparticles = 50, generations = 150)
+    modelabc = ApproxPosterior(prior, cost, 0.1)
+    sim = mcmc(modelabc, nparticles = 50, generations = 1000, parallel = true)
     @test all(
         abs.(
             ((mean(getindex.(sim[1], 1)), mean(getindex.(sim[1], 2))) .- params) ./ params,
