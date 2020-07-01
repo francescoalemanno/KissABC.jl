@@ -93,13 +93,13 @@ function propose(
     i::Int,
     inactive_particles::AbstractVector,
 )
-    rand(rng) < 2 / 3 &&
-        return stretch_propose(rng, density, particles, i, inactive_particles)
-    rand(rng) < 2 / 3 && return de_propose(rng, density, particles, i, inactive_particles)
+    p = rand(rng, (1, 1, 1, 1, 2, 2, 3))
+    p == 1 && return stretch_propose(rng, density, particles, i, inactive_particles)
+    p == 2 && return de_propose(rng, density, particles, i, inactive_particles)
     return ais_walk_propose(rng, density, particles, i, inactive_particles)
 end
 
-function kernel_mcmc!(
+function step!(
     density::AbstractApproxDensity,
     particles::AbstractVector,
     logdensity::AbstractVector,
@@ -117,7 +117,7 @@ function kernel_mcmc!(
     return false
 end
 
-function _mcmc!(
+function mcmc!(
     density::AbstractApproxDensity,
     particles::AbstractVector,
     logdensity::AbstractVector;
@@ -136,7 +136,7 @@ function _mcmc!(
         for (active, inactive) in ensembles
             @cthreads parallel for i in active
                 ai = ifelse(parallel, Threads.threadid(), 1)
-                kernel_mcmc!(density, particles, logdensity, inactive, i, rng) &&
+                step!(density, particles, logdensity, inactive, i, rng) &&
                     (accepted[ai] += 1)
             end
         end
@@ -168,28 +168,6 @@ function _mcmc!(
     nothing
 end
 
-function _mcmc(
-    density::AbstractApproxDensity,
-    particles::AbstractVector;
-    generations,
-    rng::AbstractRNG = Random.GLOBAL_RNG,
-    parallel = false,
-    verbose = 0,
-)
-    logdensity =
-        [loglike(density, push_p(density, particles[i])) for i in eachindex(particles)]
-    _mcmc!(
-        density,
-        particles,
-        logdensity;
-        generations = generations,
-        rng = rng,
-        parallel = parallel,
-        verbose = verbose,
-    )
-    particles, logdensity
-end
-
 """
     function mcmc(
         density::AbstractApproxDensity;
@@ -198,6 +176,7 @@ end
         rng::AbstractRNG = Random.GLOBAL_RNG,
         parallel = false,
         verbose = 2,
+        bare_particles=false
     )
 This function will run an Affine Invariant MC sampler on the ABC density defined in `density`,
 the ensemble will contain `nparticles` particles, and each particle will evolve for a total number of steps equal to `generations`.
@@ -209,18 +188,23 @@ function mcmc(
     rng::AbstractRNG = Random.GLOBAL_RNG,
     parallel = false,
     verbose = 2,
+    bare_particles = false,
 )
-    particles, loglikes = _mcmc(
+    particles = [op(float, unconditional_sample(rng, density)) for i = 1:nparticles]
+    logdensity = [loglike(density, push_p(density, particles[i])) for i = 1:nparticles]
+
+    mcmc!(
         density,
-        [op(float, unconditional_sample(rng, density)) for i = 1:nparticles],
+        particles,
+        logdensity;
         generations = generations,
         rng = rng,
         parallel = parallel,
         verbose = verbose,
     )
+    bare_particles && return particles, logdensity
     pushed_particles = [push_p(density, particles[i]).x for i in eachindex(particles)]
-
-    pushed_particles, loglikes
+    pushed_particles, logdensity
 end
 
 export mcmc
