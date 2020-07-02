@@ -1,9 +1,17 @@
 using KissABC
 using Distributions
+
 using Statistics
 using Test
 using Random
+@testset "AbstractMCMC interface" begin
+    pri = Normal(1, 0.2)
+    sim(μ) = μ * μ + 1
+    cost(x) = abs(sim(x) - 1.5)
+    abc = ApproxKernelizedPosterior(pri, cost, 0.001)
 
+    @test sim.(sample(abc, AIS(10),70000))|>mean ≈ 1.5 atol=0.02
+end
 Random.seed!(1)
 @testset "Factored" begin
     d = Factored(Uniform(0, 1), Uniform(100, 101))

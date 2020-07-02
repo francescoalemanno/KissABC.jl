@@ -1,9 +1,12 @@
 module KissABC
 using Base.Threads
+import AbstractMCMC
+import AbstractMCMC: sample, step, MCMCThreads
 using Distributions
 using Random
 using ProgressMeter
 import Base.length
+
 
 macro cthreads(condition::Symbol, loop)
     return esc(quote
@@ -207,5 +210,47 @@ function mcmc(
     pushed_particles, logdensity
 end
 
-export mcmc
+struct AIS <: AbstractMCMC.AbstractSampler
+    nparticles::Int
+end
+
+struct AISState{S,L}
+    "Sample of the Affine Invariant Sampler."
+    sample::S
+    "Log-likelihood of the sample."
+    loglikelihood::L
+    "Current particle"
+    i::Int
+    AISState(s::S,l::L,i=1) where {S,L} = new{S,L}(s,l,i)
+end
+
+
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::AbstractMCMC.AbstractModel,
+    spl::AIS;
+    kwargs...
+)
+    particles = [op(float, unconditional_sample(rng, model)) for i = 1:spl.nparticles]
+    logdensity = [loglike(model, push_p(model, particles[i])) for i = 1:spl.nparticles]
+
+    push_p(model,particles[end]).x, AISState(particles,logdensity)
+end
+
+function AbstractMCMC.step(
+    rng::Random.AbstractRNG,
+    model::AbstractMCMC.AbstractModel,
+    spl::AIS,
+    state::AISState;
+    kwargs...
+)
+    i=state.i
+    sep=spl.nparticles÷2
+    inactives = (1:sep, (sep+1):spl.nparticles)
+    inactive=ifelse(i<=sep,inactives[2],inactives[1])
+    step!(model, state.sample, state.loglikelihood, inactive, i, rng)
+    push_p(model,state.sample[i]).x, AISState(state.sample,state.loglikelihood,1+(i%spl.nparticles))
+end
+
+export mcmc, sample, AIS, MCMCThreads
 end

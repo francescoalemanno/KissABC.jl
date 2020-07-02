@@ -1,4 +1,4 @@
-abstract type AbstractApproxDensity end
+abstract type AbstractApproxDensity <: AbstractMCMC.AbstractModel end
 abstract type AbstractApproxPosterior <: AbstractApproxDensity end
 #=
 unconditional_sample(rng::AbstractRNG,density::AbstractApproxDensity) = error("define a method to cover unconditional_sample(rng::AbstractRNG,density::"*repr(typeof(density))*").")
