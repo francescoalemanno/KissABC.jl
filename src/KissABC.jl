@@ -90,17 +90,12 @@ function AbstractMCMC.bundle_samples(
 )
     return AISChain([samples[i].x for i in eachindex(samples)])
 end
-function AbstractMCMC.chainscat(a::AISChain{<:Vector}, b::AISChain{<:Vector})
-    return AISChain((a.samples, b.samples))
-end
-function AbstractMCMC.chainscat(a::AISChain{<:Vector}, b::AISChain{<:Tuple})
-    return AISChain((a.samples, b.samples...))
-end
-function AbstractMCMC.chainscat(a::AISChain{<:Tuple}, b::AISChain{<:Vector})
-    return AISChain((a.samples..., b.samples))
-end
-function AbstractMCMC.chainscat(a::AISChain{<:Tuple}, b::AISChain{<:Tuple})
-    return AISChain((a.samples..., b.samples...))
+
+boxchain(a::AbstractVector) = (a,)
+boxchain(a::Tuple) = a
+
+function AbstractMCMC.chainscat(a::AISChain, b::AISChain)
+    return AISChain((boxchain(a.samples)..., boxchain(b.samples)...))
 end
 
 export sample, AIS, AISChain, MCMCThreads, MCMCDistributed
