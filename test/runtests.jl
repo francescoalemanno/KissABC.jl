@@ -88,7 +88,7 @@ end
     sim((n, du)) = (n * n + du) * (n + randn() * 0.1)
     cost(x) = abs(sim(x) - 5.5)
     model_abc = ApproxPosterior(pri, cost, 0.01)
-    res = sample(model_abc, AIS(50), 500, burnin = 100)
+    res = sample(model_abc, AIS(100), 1000, burnin = 500)
     ress=[(res[i,:,1]...,) for i in size(res,1)]
     @test abs(mean(sim.(ress)) - 5.5) < 0.2
 end
