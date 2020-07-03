@@ -179,5 +179,5 @@ function AbstractMCMC.step(
     AISState(state.sample, state.loglikelihood, 1 + (i % spl.nparticles))
 end
 
-export mcmc, sample, AIS, MCMCThreads
+export sample, AIS, MCMCThreads
 end
