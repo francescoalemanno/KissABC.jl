@@ -102,7 +102,7 @@ function propose(
     return ais_walk_propose(rng, density, particles, i, inactive_particles)
 end
 
-function step!(
+function transition!(
     density::AbstractApproxDensity,
     particles::AbstractVector,
     logdensity::AbstractVector,
@@ -120,96 +120,6 @@ function step!(
     return false
 end
 
-function mcmc!(
-    density::AbstractApproxDensity,
-    particles::AbstractVector,
-    logdensity::AbstractVector;
-    generations,
-    rng::AbstractRNG = Random.GLOBAL_RNG,
-    parallel = false,
-    verbose = 0,
-)
-    nparticles = length(particles)
-    sep = nparticles ÷ 2
-    ensembles = ((1:sep, (sep+1):nparticles), ((sep+1):nparticles, 1:sep))
-    p = (verbose >= 1) ? Progress(generations, ifelse(verbose > 2, -Inf, 0.25)) : nothing
-    accepted = zeros(Int, ifelse(parallel, Threads.nthreads(), 1))
-    for reps = 1:generations
-        accepted .= 0
-        for (active, inactive) in ensembles
-            @cthreads parallel for i in active
-                ai = ifelse(parallel, Threads.threadid(), 1)
-                step!(density, particles, logdensity, inactive, i, rng) &&
-                    (accepted[ai] += 1)
-            end
-        end
-        if verbose >= 1
-            stats = [(:generation, reps), (:acceptance_rate, sum(accepted) / nparticles)]
-            if verbose >= 2
-                μp = foldl(
-                    (x, y) -> op(+, x, op(/, y, nparticles)),
-                    view(particles, 2:nparticles),
-                    init = op(/, particles[1], nparticles),
-                )
-                σp = op(
-                    x -> sqrt(x) * sqrt(nparticles / (nparticles - 1)),
-                    foldl(
-                        (x, y) -> op(+, x, op(/, op(abs2, op(-, y, μp)), nparticles)),
-                        view(particles, 2:nparticles),
-                        init = op(/, op(abs2, op(-, particles[1], μp)), nparticles),
-                    ),
-                )
-                stats = [stats..., (:avg_particle, μp.x), (:std_particle, σp.x)]
-            end
-            if reps == generations
-                finish!(p; showvalues = stats)
-            else
-                next!(p; showvalues = stats)
-            end
-        end
-    end
-    nothing
-end
-
-"""
-    function mcmc(
-        density::AbstractApproxDensity;
-        nparticles::Int,
-        generations,
-        rng::AbstractRNG = Random.GLOBAL_RNG,
-        parallel = false,
-        verbose = 2,
-        bare_particles=false
-    )
-This function will run an Affine Invariant MC sampler on the ABC density defined in `density`,
-the ensemble will contain `nparticles` particles, and each particle will evolve for a total number of steps equal to `generations`.
-"""
-function mcmc(
-    density::AbstractApproxDensity;
-    nparticles::Int,
-    generations,
-    rng::AbstractRNG = Random.GLOBAL_RNG,
-    parallel = false,
-    verbose = 2,
-    bare_particles = false,
-)
-    particles = [op(float, unconditional_sample(rng, density)) for i = 1:nparticles]
-    logdensity = [loglike(density, push_p(density, particles[i])) for i = 1:nparticles]
-
-    mcmc!(
-        density,
-        particles,
-        logdensity;
-        generations = generations,
-        rng = rng,
-        parallel = parallel,
-        verbose = verbose,
-    )
-    bare_particles && return particles, logdensity
-    pushed_particles = [push_p(density, particles[i]).x for i in eachindex(particles)]
-    pushed_particles, logdensity
-end
-
 struct AIS <: AbstractMCMC.AbstractSampler
     nparticles::Int
 end
@@ -221,20 +131,36 @@ struct AISState{S,L}
     loglikelihood::L
     "Current particle"
     i::Int
-    AISState(s::S,l::L,i=1) where {S,L} = new{S,L}(s,l,i)
+    AISState(s::S, l::L, i = 1) where {S,L} = new{S,L}(s, l, i)
 end
-
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::AbstractMCMC.AbstractModel,
     spl::AIS;
-    kwargs...
+    burnin::Int = 0,
+    kwargs...,
 )
     particles = [op(float, unconditional_sample(rng, model)) for i = 1:spl.nparticles]
+    nparticles = length(particles)
+    if nparticles < 2 * length(model) + 10
+        error(
+            "nparticles = ",
+            nparticles,
+            " is insufficient, set number of particles in AIS(⋅) atleast to ",
+            2 * length(model) + 10,
+        )
+    end
     logdensity = [loglike(model, push_p(model, particles[i])) for i = 1:spl.nparticles]
 
-    push_p(model,particles[end]).x, AISState(particles,logdensity)
+    sep = nparticles ÷ 2
+    ensembles = ((1:sep, (sep+1):nparticles), ((sep+1):nparticles, 1:sep))
+    for reps = 1:burnin, (active, inactive) in ensembles
+        for i in active
+            transition!(model, particles, logdensity, inactive, i, rng)
+        end
+    end
+    push_p(model, particles[end]).x, AISState(particles, logdensity)
 end
 
 function AbstractMCMC.step(
@@ -242,14 +168,15 @@ function AbstractMCMC.step(
     model::AbstractMCMC.AbstractModel,
     spl::AIS,
     state::AISState;
-    kwargs...
+    kwargs...,
 )
-    i=state.i
-    sep=spl.nparticles÷2
+    i = state.i
+    sep = spl.nparticles ÷ 2
     inactives = (1:sep, (sep+1):spl.nparticles)
-    inactive=ifelse(i<=sep,inactives[2],inactives[1])
-    step!(model, state.sample, state.loglikelihood, inactive, i, rng)
-    push_p(model,state.sample[i]).x, AISState(state.sample,state.loglikelihood,1+(i%spl.nparticles))
+    inactive = ifelse(i <= sep, inactives[2], inactives[1])
+    transition!(model, state.sample, state.loglikelihood, inactive, i, rng)
+    push_p(model, state.sample[i]).x,
+    AISState(state.sample, state.loglikelihood, 1 + (i % spl.nparticles))
 end
 
 export mcmc, sample, AIS, MCMCThreads
