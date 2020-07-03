@@ -68,7 +68,7 @@ end
     sim(μ) = μ * μ + 1
     cost(x) = abs(sim(x) - 1.5)
     abc = ApproxKernelizedPosterior(pri, cost, 0.001)
-    res = sample(abc, AIS(12), 100, burnin = 50)
+    res = sample(abc, AIS(12), 100, burnin = 70)
     @test abs(mean(sim.(res[:])) - 1.5) <= 0.005
 end
 
