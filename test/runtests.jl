@@ -57,6 +57,7 @@ end
     nparticles = 5000
     modelabc = ApproxPosterior(pri, x -> sum(abs, model(x, 0) .- tinydata), 0.1)
     results_st = sample(modelabc, AIS(50), 5000, burnin = 100)
+    @test IndexStyle(results_st) == IndexCartesian()
     chain=results_st[:,1,1]
     bs_median_st = [median(rand(chain, nparticles)) for i = 1:500]
     μ_st = mean(bs_median_st)
