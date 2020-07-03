@@ -6,14 +6,6 @@ using Test
 using Random
 Random.seed!(1)
 
-@testset "AbstractMCMC interface" begin
-    pri = Normal(1, 0.2)
-    sim(μ) = μ * μ + 1
-    cost(x) = abs(sim(x) - 1.5)
-    abc = ApproxKernelizedPosterior(pri, cost, 0.001)
-    @test sim.(sample(abc, AIS(100), 700, burnin = 100)) |> mean ≈ 1.5 atol = 0.02
-end
-
 @testset "Factored" begin
     d = Factored(Uniform(0, 1), Uniform(100, 101))
     @test all((0, 100) .<= rand(d) .<= (1, 101))
@@ -65,7 +57,8 @@ end
     nparticles = 5000
     modelabc = ApproxPosterior(pri, x -> sum(abs, model(x, 0) .- tinydata), 0.1)
     results_st = sample(modelabc, AIS(50), 5000, burnin = 100)
-    bs_median_st = [median(rand(getindex.(results_st, 1), nparticles)) for i = 1:500]
+    chain=results_st[:,1,1]
+    bs_median_st = [median(rand(chain, nparticles)) for i = 1:500]
     μ_st = mean(bs_median_st)
     @test abs(μ_st - 43.6) < 1
 end
@@ -76,8 +69,19 @@ end
     cost(x) = abs(sim(x) - 1.5)
     abc = ApproxKernelizedPosterior(pri, cost, 0.001)
     res = sample(abc, AIS(12), 100, burnin = 50)
-    @test abs(mean(sim.(res)) - 1.5) <= 0.005
+    @test abs(mean(sim.(res[:])) - 1.5) <= 0.005
 end
+
+@testset "Normal dist -> Dirac Delta inference, MCMCThreads" begin
+    pri = Normal(1, 0.2)
+    sim(μ) = μ * μ + 1
+    cost(x) = abs(sim(x) - 1.5)
+    abc = ApproxKernelizedPosterior(pri, cost, 0.001)
+    res = sample(abc, AIS(12), MCMCThreads(),100,50, burnin = 50)
+    @test size(res) == (100, 1, 50)
+    @test abs(mean(sim.(res[:])) - 1.5) <= 0.005
+end
+
 
 @testset "Normal dist + Uniform Distr -> inference" begin
     pri = Factored(Normal(1, 0.5), DiscreteUniform(1, 10))
@@ -85,7 +89,8 @@ end
     cost(x) = abs(sim(x) - 5.5)
     model_abc = ApproxPosterior(pri, cost, 0.01)
     res = sample(model_abc, AIS(50), 500, burnin = 100)
-    @test abs(mean(sim.(res)) - 5.5) < 0.2
+    ress=[(res[i,:,1]...,) for i in size(res,1)]
+    @test abs(mean(sim.(ress)) - 5.5) < 0.2
 end
 
 function brownianrms((μ, σ), N, samples = 200)
@@ -102,7 +107,7 @@ end
     modelabc = ApproxPosterior(prior, cost, 0.1)
     sim = sample(modelabc, AIS(50), 100, burnin = 1000)
     @test all(
-        abs.(((mean(getindex.(sim, 1)), mean(getindex.(sim, 2))) .- params) ./ params,) .<
+        abs.(((mean(sim[:,1,1]), mean(sim[:,2,1])) .- params) ./ params,) .<
         (0.1, 0.1),
     )
 end
@@ -122,9 +127,9 @@ end
     sim(μ) = μ + rand((randn() * 0.1, randn()))
     cost(x) = abs(sim(x) - 0.0)
     plan = ApproxPosterior(prior, cost, 0.01)
-    res = sample(plan, AIS(100), 2000, burnin = 10000)
+    res = sample(plan, AIS(100), 2000, burnin = 10000)[:]
     plan = ApproxKernelizedPosterior(prior, cost, 0.01 / sqrt(2))
-    resk = sample(plan, AIS(100), 2000, burnin = 10000)
+    resk = sample(plan, AIS(100), 2000, burnin = 10000)[:]
     testst(alg, r) = begin
         m = mean(abs, st(r) - st_n)
         println(":", alg, ": testing m = ", m)
@@ -137,7 +142,7 @@ end
 
 @testset "Usecase of issue #10" begin
     plan = ApproxPosterior(Normal(0, 1), x -> abs(x - 1.5), 0.01)
-    res = sample(plan, AIS(20), 100, burnin = 100)
+    res = sample(plan, AIS(20), 100, burnin = 100)[:]
     @show mean(res), std(res)
     @test abs(mean(res) - 1.5) <= 0.01
 end

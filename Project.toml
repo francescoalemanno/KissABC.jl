@@ -6,13 +6,11 @@ version = "2.0.0"
 [deps]
 AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
-ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [compat]
-Distributions = "0.23"
 AbstractMCMC = "^2"
-ProgressMeter = "^1"
+Distributions = "0.23"
 julia = "^1.1"
 
 [extras]
