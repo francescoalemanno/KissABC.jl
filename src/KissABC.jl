@@ -28,13 +28,14 @@ struct AISChain{T<:Union{Tuple,Vector}} <: AbstractArray{Real,3}
     samples::T
     AISChain(s::T) where {T} = new{T}(s)
 end
-
+include("printing.jl")
 import Base: size, getindex, IndexStyle
-size(x::AISChain{<:Vector}) = (length(x.samples),length(x.samples[1]),1)
-size(x::AISChain{<:Tuple}) = (length(x.samples[1]),length(x.samples[1][1]),length(x.samples))
+size(x::AISChain{<:Vector}) = (length(x.samples), length(x.samples[1]), 1)
+size(x::AISChain{<:Tuple}) =
+    (length(x.samples[1]), length(x.samples[1][1]), length(x.samples))
 @inline IndexStyle(::AISChain) = IndexCartesian()
-getindex(x::AISChain{<:Tuple},i::Int,j::Int,k::Int) = x.samples[k][i][j]
-getindex(x::AISChain{<:Vector},i::Int,j::Int,k::Int) = x.samples[i][j]
+getindex(x::AISChain{<:Tuple}, i::Int, j::Int, k::Int) = x.samples[k][i][j]
+getindex(x::AISChain{<:Vector}, i::Int, j::Int, k::Int) = x.samples[i][j]
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
@@ -45,21 +46,17 @@ function AbstractMCMC.step(
 )
     particles = [op(float, unconditional_sample(rng, model)) for i = 1:spl.nparticles]
     nparticles = length(particles)
-    nparticles < 2 * length(model) + 10 && error(
+    nparticles < length(model) + 5 && error(
         "nparticles = ",
         nparticles,
         " is insufficient, set number of particles in AIS(⋅) atleast to ",
-        2 * length(model) + 10,
+        length(model) + 5,
     )
 
     logdensity = [loglike(model, push_p(model, particles[i])) for i = 1:spl.nparticles]
 
-    sep = nparticles ÷ 2
-    ensembles = ((1:sep, (sep+1):nparticles), ((sep+1):nparticles, 1:sep))
-    for reps = 1:burnin, (active, inactive) in ensembles
-        for i in active
-            transition!(model, particles, logdensity, inactive, i, rng)
-        end
+    for reps = 1:burnin, i = 1:nparticles
+        transition!(model, particles, logdensity, i, rng)
     end
     push_p(model, particles[end]), AISState(particles, logdensity)
 end
@@ -69,13 +66,13 @@ function AbstractMCMC.step(
     model::AbstractMCMC.AbstractModel,
     spl::AIS,
     state::AISState;
+    ntransitions::Int = 1,
     kwargs...,
 )
     i = state.i
-    sep = spl.nparticles ÷ 2
-    inactives = (1:sep, (sep+1):spl.nparticles)
-    inactive = ifelse(i <= sep, inactives[2], inactives[1])
-    transition!(model, state.sample, state.loglikelihood, inactive, i, rng)
+    for reps = 1:ntransitions
+        transition!(model, state.sample, state.loglikelihood, i, rng)
+    end
     push_p(model, state.sample[i]),
     AISState(state.sample, state.loglikelihood, 1 + (i % spl.nparticles))
 end

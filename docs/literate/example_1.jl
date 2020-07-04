@@ -41,7 +41,7 @@ prior = Factored(
 rand(prior)
 # now we need a function to compute summary statistics for our data, this is not the optimal choice, but it will work out anyway
 function S(x)
-    r = (0.1, 0.2, 0.5, 0.8, 0.9)
+    r = (0.1, 0.2, 0.45, 0.55, 0.8, 0.9)
     quantile(x, r)
 end
 
@@ -54,19 +54,8 @@ D(P, N = 5000) = sqrt(mean(abs2, summ_data .- summ_model(P, N)));
 
 
 # we can now run ABCDE to get the posterior distribution of our parameters given the dataset `data`
-approx_density = ApproxPosterior(prior, D, 0.05)
-res, _ = mcmc(approx_density, nparticles = 100, generations = 500, verbose = 0)
-
-# let's see the median and 95% confidence interval for the inferred parameters and let's compare them with the true values
-getstats(V) =
-    (median = median(V), lowerbound = quantile(V, 0.025), upperbound = quantile(V, 0.975));
-
-labels = (:μ_1, :μ_2, :σ_1, :σ_2, :prob)
-P = [getindex.(res, i) for i = 1:5]
-stats = getstats.(P)
-
-for is in eachindex(stats)
-    println(labels[is], " ≡ ", parameters[is], " → ", stats[is])
-end
-
-# The inferred parameters are close to nominal values
+approx_density = ApproxPosterior(prior, D, 0.1)
+res =
+    sample(approx_density, AIS(15), MCMCThreads(), 4000, 4, burnin = 300, progress = false)
+@show res
+# the nominal values of the parameters lie inside the CI.

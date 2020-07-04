@@ -56,9 +56,10 @@ end
     tinydata = (0, 11)
     nparticles = 5000
     modelabc = ApproxPosterior(pri, x -> sum(abs, model(x, 0) .- tinydata), 0.1)
-    results_st = sample(modelabc, AIS(50), 5000, burnin = 100)
+    results_st = sample(modelabc, AIS(500), 5000, burnin = 100, progress = false)
+    @show results_st
     @test IndexStyle(results_st) == IndexCartesian()
-    chain=results_st[:,1,1]
+    chain = results_st[:, 1, 1]
     bs_median_st = [median(rand(chain, nparticles)) for i = 1:500]
     μ_st = mean(bs_median_st)
     @test abs(μ_st - 43.6) < 1
@@ -69,7 +70,8 @@ end
     sim(μ) = μ * μ + 1
     cost(x) = abs(sim(x) - 1.5)
     abc = ApproxKernelizedPosterior(pri, cost, 0.001)
-    res = sample(abc, AIS(12), 100, burnin = 70)
+    res = sample(abc, AIS(12), 100, burnin = 70, progress = false)
+    @show res
     @test abs(mean(sim.(res[:])) - 1.5) <= 0.005
 end
 
@@ -78,7 +80,8 @@ end
     sim(μ) = μ * μ + 1
     cost(x) = abs(sim(x) - 1.5)
     abc = ApproxKernelizedPosterior(pri, cost, 0.001)
-    res = sample(abc, AIS(12), MCMCThreads(),100,50, burnin = 50)
+    res = sample(abc, AIS(12), MCMCThreads(), 100, 50, burnin = 50, progress = false)
+    @show res
     @test size(res) == (100, 1, 50)
     @test abs(mean(sim.(res[:])) - 1.5) <= 0.005
 end
@@ -89,8 +92,9 @@ end
     sim((n, du)) = (n * n + du) * (n + randn() * 0.01)
     cost(x) = abs(sim(x) - 5.5)
     model_abc = ApproxPosterior(pri, cost, 0.01)
-    res = sample(model_abc, AIS(100), 1000, burnin = 500)
-    ress=[(res[i,:,1]...,) for i in size(res,1)]
+    res = sample(model_abc, AIS(100), 1000, burnin = 500, progress = false)
+    @show res
+    ress = [(res[i, :, 1]...,) for i in size(res, 1)]
     @test abs(mean(sim.(ress)) - 5.5) < 0.2
 end
 
@@ -106,10 +110,10 @@ end
     prior = Factored(Uniform(0, 1), Uniform(0, 4))
     cost(x) = sum(abs, brownianrms(x, 30) .- tdata) / length(tdata)
     modelabc = ApproxPosterior(prior, cost, 0.1)
-    sim = sample(modelabc, AIS(50), 100, burnin = 1000)
+    sim = sample(modelabc, AIS(50), 100, burnin = 1000, progress = false)
+    @show sim
     @test all(
-        abs.(((mean(sim[:,1,1]), mean(sim[:,2,1])) .- params) ./ params,) .<
-        (0.1, 0.1),
+        abs.(((mean(sim[:, 1, 1]), mean(sim[:, 2, 1])) .- params) ./ params,) .< (0.1, 0.1),
     )
 end
 
@@ -128,23 +132,23 @@ end
     sim(μ) = μ + rand((randn() * 0.1, randn()))
     cost(x) = abs(sim(x) - 0.0)
     plan = ApproxPosterior(prior, cost, 0.01)
-    res = sample(plan, AIS(100), 2000, burnin = 10000)[:]
+    res = sample(plan, AIS(100), 2000, burnin = 10000, progress = false)
     plan = ApproxKernelizedPosterior(prior, cost, 0.01 / sqrt(2))
-    resk = sample(plan, AIS(100), 2000, burnin = 10000)[:]
+    resk = sample(plan, AIS(100), 2000, burnin = 10000, progress = false)
     testst(alg, r) = begin
-        m = mean(abs, st(r) - st_n)
+        m = mean(abs, st(r[:]) - st_n)
         println(":", alg, ": testing m = ", m)
+        @show r
         m < 0.1
     end
     @test testst("Hard threshold", res)
     @test testst("Kernelized threshold", resk)
 end
 
-
 @testset "Usecase of issue #10" begin
     plan = ApproxPosterior(Normal(0, 1), x -> abs(x - 1.5), 0.01)
-    res = sample(plan, AIS(20), 100, burnin = 100)[:]
-    @show mean(res), std(res)
+    res = sample(plan, AIS(20), 100, burnin = 100, progress = false)
+    @show res
     @test abs(mean(res) - 1.5) <= 0.01
 end
 
@@ -160,17 +164,18 @@ end
 
 plan=ApproxPosterior(Factored(Uniform(0,1), Uniform(0.5,1)), cost, 0.01)
 
-@show res=mcmc(plan, nparticles=100,generations=125,parallel=true)
-
+@show res=sample(plan, AIS(50),MCMCThreads(),2500,4,burnin=50)
+res
 using Statistics
-function getCI(x::Vector{<:Number})
-    quantile(x,[0.25,0.5,0.75])
-end
-function getCI(x::Vector{<:Tuple})
-    [getCI(getindex.(x,i)) for i in 1:length(x[1])]
+
+function get_CI(x)
+    [quantile(x[:,i,:][:],[0.025,0.25,0.5,0.75,0.975]) for i = 1:size(x,2)]
 end
 
-getCI(res[1])
+using MCMCChains
+
+Chains(res,start=[2000,2000,2000,2000])
+
 240 generations:
  [0.48958933397111065, 0.4924062224370781, 0.49559446402487584]
  [0.879783065265908, 0.8816472031816496, 0.8835803050367947]
@@ -204,14 +209,14 @@ end
 
 prior=Factored(Uniform(1,3),Truncated(Normal(0,0.05),0,100))
 plan=ApproxKernelizedPosterior(prior,cost,0.005)
-res,_=mcmc(plan,nparticles=10000,generations=500,parallel=true)
+res=sample(plan,AIS(10),10000,ntransitions=50)
 
 prsample=[rand(prior) for i in 1:10000]
 μ_pr=getindex.(prsample,1)
 σ_pr=getindex.(prsample,2)
 
-μ_p=getindex.(res,1)
-σ_p=getindex.(res,2)
+μ_p=vec(res[:,1,:])
+σ_p=vec(res[:,2,:])
 
 mean(μ_p),std(μ_p)
 mean(σ_p),std(σ_p)

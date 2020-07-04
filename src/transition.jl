@@ -4,12 +4,14 @@ function de_propose(
     density::AbstractApproxDensity,
     particles::AbstractVector,
     i::Int,
-    inactive_particles::AbstractVector,
 )
     γ = 2.38 / sqrt(2 * length(density)) * exp(randn(rng) * 0.1)
-    b = a = rand(rng, inactive_particles)
-    while b == a
-        b = rand(rng, inactive_particles)
+    a = b = i
+    while a ∈ (i,)
+        a = rand(rng, eachindex(particles))
+    end
+    while b ∈ (a, i)
+        b = rand(rng, eachindex(particles))
     end
     W = op(*, op(-, particles[a], particles[b]), γ)
     T = op(
@@ -29,14 +31,16 @@ function ais_walk_propose(
     density::AbstractApproxDensity,
     particles::AbstractVector,
     i::Int,
-    inactive_particles::AbstractVector,
 )
-    c = b = a = rand(rng, inactive_particles)
-    while b == a
-        b = rand(rng, inactive_particles)
+    a = b = c = i
+    while a ∈ (i,)
+        a = rand(rng, eachindex(particles))
     end
-    while c == a || c == b
-        c = rand(rng, inactive_particles)
+    while b ∈ (a, i)
+        b = rand(rng, eachindex(particles))
+    end
+    while c ∈ (b, a, i)
+        c = rand(rng, eachindex(particles))
     end
     Xs = op(/, op(+, particles[a], op(+, particles[b], particles[c])), 3)
     W = op(
@@ -59,9 +63,11 @@ function stretch_propose(
     density::AbstractApproxDensity,
     particles::AbstractVector,
     i::Int,
-    inactive_particles::AbstractVector,
 )
-    a = rand(rng, inactive_particles)
+    a = i
+    while i == a
+        a = rand(rng, eachindex(particles))
+    end
     Z = sample_g(rng, 3.0)
     W = op(*, op(-, particles[i], particles[a]), Z)
     op(+, particles[a], W), (length(density) - 1) * log(Z)
@@ -72,23 +78,20 @@ function propose(
     density::AbstractApproxDensity,
     particles::AbstractVector,
     i::Int,
-    inactive_particles::AbstractVector,
 )
     p = rand(rng, (1, 1, 1, 1, 2, 2, 3))
-    p == 1 && return stretch_propose(rng, density, particles, i, inactive_particles)
-    p == 2 && return de_propose(rng, density, particles, i, inactive_particles)
-    return ais_walk_propose(rng, density, particles, i, inactive_particles)
+    pr = (stretch_propose, de_propose, ais_walk_propose)
+    pr[p](rng, density, particles, i)
 end
 
 function transition!(
     density::AbstractApproxDensity,
     particles::AbstractVector,
     logdensity::AbstractVector,
-    inactive_particles::AbstractVector,
     particle_index::Int,
     rng::AbstractRNG,
 )
-    p, ld_correction = propose(rng, density, particles, particle_index, inactive_particles)
+    p, ld_correction = propose(rng, density, particles, particle_index)
     ld = loglike(density, push_p(density, p))
     if accept(density, rng, logdensity[particle_index], ld, ld_correction)
         particles[particle_index] = p

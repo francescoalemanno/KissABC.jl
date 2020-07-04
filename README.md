@@ -46,16 +46,16 @@ end
 Now we are all set, we can use `mcmc` which is Affine Invariant MC algorithm, to simulate the posterior distribution for this model, inferring μ and σ
 ```julia
 approx_density = ApproxKernelizedPosterior(prior,cost,0.005)
-res, _ = mcmc(approx_density, nparticles = 2000, generations = 500, parallel = true);
+res = sample(plan,AIS(10),10000,ntransitions=50)
 ```
-We chose a tolerance on distances equal to `0.1`, a number of simulated particles equal to `2000`, we chose a number of steps per particles `generations = 500` and we enabled Threaded parallelism, and the simulated posterior results are in `res`, we are ignoring all the other information returned via `_`.
+We chose a tolerance on distances equal to `0.05`, a number of particles equal to `10`, we chose a number of steps per sample `ntransitions = 50` and we acquiring `10000` samples, the simulated posterior results will be `res`.
 We can now extract the results:
 ```julia
 prsample=[rand(prior) for i in 1:5000] #some samples from the prior for comparison
 μ_pr=getindex.(prsample,1) # μ samples from the prior
 σ_pr=getindex.(prsample,2) # σ samples from the prior
-μ_p=getindex.(res,1) # μ samples from the posterior
-σ_p=getindex.(res,2) # σ samples from the posterior
+μ_p=vec(res[:,1,:]) # μ samples from the posterior
+σ_p=vec(res[:,2,:]) # σ samples from the posterior
 ```
 and plotting prior and posterior side by side we get:
 
