@@ -87,7 +87,7 @@ end
 end
 
 
-@testset "Normal dist + Uniform Distr -> inference" begin
+@testset "Normal dist + Uniform Distr inference" begin
     pri = Factored(Normal(1, 0.5), DiscreteUniform(1, 10))
     sim((n, du)) = (n * n + du) * (n + randn() * 0.01)
     cost(x) = abs(sim(x) - 5.5)
