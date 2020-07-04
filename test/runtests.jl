@@ -166,7 +166,11 @@ end
         progress = false,
     )
     err = AISChain(ntuple(j -> [plan.cost(res[i, :, j]) for i = 1:100], 4))
-    @show err
+    show(stdout, MIME("text/plain"), err)
+    io=IOBuffer()
+    show(io, MIME("text/plain"), err)
+    show(io, err)
+    @test String(take!(io))[1] == 'O'
     @test mean(err) <= 0.02
 end
 
@@ -295,3 +299,4 @@ mcmc(approx_density,nparticles=100,generations=5000,parallel=true)
 
 problem.target
 =#
+)
