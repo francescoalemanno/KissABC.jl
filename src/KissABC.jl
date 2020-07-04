@@ -95,5 +95,81 @@ function AbstractMCMC.chainscat(a::AISChain, b::AISChain)
     return AISChain((boxchain(a.samples)..., boxchain(b.samples)...))
 end
 
+"""
+    sample(model, AIS(N), Ns[; optional args])
+    sample(model, AIS(N), MCMCThreads(), Ns, Nc[; optional keyword args])
+    sample(model, AIS(N), MCMCDistributed(), Ns, Nc[; optional keyword args])
+
+# Generalities
+
+This function will run an Affine Invariant MCMC sampler, and will return an AISChain object with all the parameter samples,
+the mandatory parameters are:
+
+`model`: a subtype of `AbstractDensity`, look at `ApproxPosterior`, `ApproxKernelizedPosterior`, `CommonLogDensity`.
+`N`: number of particles in the ensemble, this particles will be evolved to generate new samples.
+`Ns`: total number of samples which must be recorded.
+`Nc`: total number of chains to run in parallel if MCMCThreads or MCMCDistributed is enabled.
+
+the optional arguments available are:
+
+`burnin`: number of mcmc steps per particle prior to saving any sample.
+`ntransitions`: number of mcmc steps per particle between each sample.
+`progress`: a boolean to disable verbosity
+
+# Minimal Example for `CommonLogDensity`:
+
+```julia
+using KissABC
+D = CommonLogDensity(
+    2, #number of parameters
+    rng -> randn(rng, 2), # initial sampling strategy
+    x -> -100 * (x[1] - x[2]^2)^2 - (x[2] - 1)^2, # rosenbrock banana log-density
+)
+res = sample(D, AIS(50), 1000, ntransitions = 100, burnin = 500, progress = false)
+println(res)
+```
+
+output:
+```
+number of samples: 1000
+number of parameters: 2
+number of chains: 1
+┌─────────┬───────────────────────┬─────────────────────┬────────────────────┬───────────────────┬────────────────────┐
+│         │                  2.5% │               25.0% │              50.0% │             75.0% │              97.5% │
+├─────────┼───────────────────────┼─────────────────────┼────────────────────┼───────────────────┼────────────────────┤
+│ Param 1 │ -0.025648264131516257 │  0.3219940894353638 │ 0.9721286048546971 │ 2.041743999647929 │ 5.6520319210700825 │
+│ Param 2 │   -0.7226487177325958 │ 0.48611230863899335 │ 0.9604278578610763 │ 1.418519267388806 │  2.385312701114671 │
+└─────────┴───────────────────────┴─────────────────────┴────────────────────┴───────────────────┴────────────────────┘
+```
+
+# Minimal Example for `ApproxKernelizedPosterior` (`ApproxPosterior`)
+
+```julia
+using KissABC, Distributions
+prior = Uniform(-10, 10) # prior distribution for parameter
+sim(μ) = μ + rand((randn() * 0.1, randn())) # simulator function
+cost(x) = abs(sim(x) - 0.0) # cost function to compare simulations to target data, in this case simply '0'
+plan = ApproxPosterior(prior, cost, 0.01) # Approximate model of log-posterior density (ABC)
+#                                           ApproxKernelizedPosterior can be used in the same fashion
+res = sample(plan, AIS(100), 2000, burnin = 10000, progress = false)
+println(res)
+```
+
+output:
+```
+Object of type AISChain (total samples 2000)
+number of samples: 2000
+number of parameters: 1
+number of chains: 1
+┌─────────┬─────────────────────┬─────────────────────┬──────────────────────┬─────────────────────┬────────────────────┐
+│         │                2.5% │               25.0% │                50.0% │               75.0% │              97.5% │
+├─────────┼─────────────────────┼─────────────────────┼──────────────────────┼─────────────────────┼────────────────────┤
+│ Param 1 │ -1.8692526364678272 │ -0.1390312701192662 │ 0.023740627510271367 │ 0.20440332127121577 │ 1.1844931848164661 │
+└─────────┴─────────────────────┴─────────────────────┴──────────────────────┴─────────────────────┴────────────────────┘
+```
+
+"""
+sample
+
 export sample, AIS, AISChain, MCMCThreads, MCMCDistributed
 end
