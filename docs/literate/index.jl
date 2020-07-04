@@ -30,7 +30,7 @@ function dist(x, y)
     hypot(d1, d2 * 50)
 end
 
-# Now we are all set, we can use `mcmc` which is Affine Invariant MC algorithm, to simulate the posterior distribution for this model, inferring μ and σ
+# Now we are all set, we can use `AIS` which is an Affine Invariant MC algorithm via the `sample` function, to simulate the posterior distribution for this model, inferring μ and σ
 cost(x) = dist(tdata, sim(x))
 approx_density = ApproxPosterior(prior, cost, 0.1)
 res = sample(approx_density, AIS(50), 2000, burnin = 100,ntransitions=10, progress = false)

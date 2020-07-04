@@ -43,7 +43,7 @@ function cost(x)
     hypot(d1, d2 * 50)
 end
 ```
-Now we are all set, we can use `mcmc` which is Affine Invariant MC algorithm, to simulate the posterior distribution for this model, inferring μ and σ
+Now we are all set, we can use `AIS` which is an Affine Invariant MC algorithm via the `sample` function, to simulate the posterior distribution for this model, inferring ``μ` and `σ`
 ```julia
 approx_density = ApproxKernelizedPosterior(prior,cost,0.005)
 res = sample(plan,AIS(10),10000,ntransitions=50)
