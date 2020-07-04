@@ -167,11 +167,31 @@ end
     )
     err = AISChain(ntuple(j -> [plan.cost(res[i, :, j]) for i = 1:100], 4))
     show(stdout, MIME("text/plain"), err)
-    io=IOBuffer()
+    io = IOBuffer()
     show(io, MIME("text/plain"), err)
     show(io, err)
     @test String(take!(io))[1] == 'O'
     @test mean(err) <= 0.02
+end
+
+@testset "CommonLogDensity: rosenbrock banana density" begin
+    D = CommonLogDensity(
+        2,
+        rng -> randn(rng, 2),
+        x -> -100 * (x[1] - x[2]^2)^2 - (x[2] - 1)^2,
+    )
+    res = sample(D, AIS(50), 1000, ntransitions = 100, burnin = 500, progress = false)
+    @show res
+    Clπ = AISChain(D.lπ.([identity.(x) for x in eachrow(res[:, :, 1])]))
+    @test quantile(Clπ[:], 0.97) > -0.69
+    #=
+    using PyPlot
+    pygui(true)
+    scatter(res[:,1,1],res[:,2,1],alpha=0.2)
+    scatter(1,1)
+    nothing
+    nothing
+    =#
 end
 
 #benchmark
