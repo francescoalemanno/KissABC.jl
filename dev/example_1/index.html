@@ -13,26 +13,26 @@ function model(P, N)
     R
 end</code></pre><pre><code class="language-none">model (generic function with 1 method)</code></pre><p>Let&#39;s use the model to generate some data, this data will constitute our dataset</p><pre><code class="language-julia">parameters = (1.0, 0.0, 0.2, 2.0, 0.4)
 data = model(parameters, 5000)</code></pre><pre><code class="language-none">5000-element Array{Float64,1}:
-  2.00039250924161
-  0.8935808805260627
-  1.206055632562347
-  1.0685349544700373
-  0.6907841099026969
-  0.9151800698949074
-  0.9464319242699613
- -1.399190642736653
-  0.8678000855493551
-  0.9980953224777807
+  0.5166679470378124
+  1.2179329746755037
+ -0.2349339355085539
+ -0.5832376970045684
+ -3.994307205561876
+  0.5797447049855631
+  1.0956995739588054
+  0.9783673239746228
+ -0.13909926699192426
+  0.19483282285586137
   ⋮
-  0.9512850074323818
-  0.8901863592318336
-  1.5968462147974685
-  0.8012111358305916
- -2.9928773810704232
- -2.4565963280648053
-  0.964699624207397
- -0.738359391320981
- -0.12106772550244631</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
+ -0.07498711456090608
+  3.7212546834143656
+  0.7332194804704228
+ -0.2304016096011009
+  0.808764867444828
+ -1.683974191094648
+  0.9486497728350872
+ -0.3420143042236103
+  1.1161804889917935</code></pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
 histogram(data)
 savefig(&quot;ex1_hist1.svg&quot;);</code></pre><p><img src="../ex1_hist1.svg" alt="ex1_hist1"/></p><p>we can now try to infer all parameters using <code>KissABC</code>, first of all we need to define a reasonable prior for our model</p><pre><code class="language-julia">prior = Factored(
     Uniform(0, 2), # there is surely a peak between 0 and 2
@@ -40,22 +40,24 @@ savefig(&quot;ex1_hist1.svg&quot;);</code></pre><p><img src="../ex1_hist1.svg" a
     Uniform(0, 1), # the peak has surely a width below 1
     Uniform(0, 4), # the smeared distribution surely has a width less than 4
     Beta(2, 2), # the number of total events from both distributions look about the same, so we will favor 0.5 just a bit
-);</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre><code class="language-none">(1.8861920354391897, -0.6361488043429597, 0.6714371143291018, 2.504799710645547, 0.9472759168971702)</code></pre><p>now we need a function to compute summary statistics for our data, this is not the optimal choice, but it will work out anyway</p><pre><code class="language-julia">function S(x)
-    r = (0.1, 0.2, 0.5, 0.8, 0.9)
+);</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre><code class="language-none">(0.3098259749757979, 0.7059385815279047, 0.11163373183613068, 3.334882248659964, 0.45384150112782934)</code></pre><p>now we need a function to compute summary statistics for our data, this is not the optimal choice, but it will work out anyway</p><pre><code class="language-julia">function S(x)
+    r = (0.1, 0.2, 0.45, 0.55, 0.8, 0.9)
     quantile(x, r)
 end</code></pre><pre><code class="language-none">S (generic function with 1 method)</code></pre><p>we will define a function to use the <code>model</code> and summarize it&#39;s results</p><pre><code class="language-julia">summ_model(P, N) = S(model(P, N));</code></pre><p>now we need a distance function to compare the summary statistics of target data and simulated data</p><pre><code class="language-julia">summ_data = S(data)
-D(P, N = 5000) = sqrt(mean(abs2, summ_data .- summ_model(P, N)));</code></pre><p>we can now run ABCDE to get the posterior distribution of our parameters given the dataset <code>data</code></p><pre><code class="language-julia">approx_density = ApproxPosterior(prior, D, 0.05)
-res, _ = mcmc(approx_density, nparticles = 100, generations = 500, verbose = 0)</code></pre><pre><code class="language-none">([(1.000081351184858, 0.0323439312194091, 0.19961198677615755, 1.9760568317579865, 0.40619876637572305), (0.9540788787738226, 0.015165404819639579, 0.18255243152620765, 1.8735564146347008, 0.33684338298043986), (1.0049451228539525, 0.028865086043084076, 0.26314902208018787, 1.9673997622460848, 0.42192164416381706), (1.0593971843838699, 0.05116674132422268, 0.21464242135200545, 1.948766528381908, 0.39252543267684087), (1.0092542764953645, -0.02135284286964023, 0.20953032139485728, 2.030813413581309, 0.4170287305009046), (0.9904081033122965, 0.05998518213673216, 0.22102098352199004, 1.9634223183992985, 0.36358742716250486), (1.1221272430288745, -0.447848819748576, 0.40896888437762363, 1.73285126447693, 0.5181797032944092), (0.9919604340287769, -0.049878261684736934, 0.22961425663113036, 1.8712408141336347, 0.37690569352650244), (0.9250210238119415, 0.05865159750851041, 0.25342741516531064, 1.9597803658739674, 0.4128086404910412), (0.9829905159264457, -0.02579524519794323, 0.19679654521016243, 2.067739338548857, 0.4200581362170308)  …  (0.9805470322073022, 0.04986626959408717, 0.21180876911489058, 1.9524159252777367, 0.39489346891497074), (0.945403778820705, -0.05815040300258591, 0.23039088642054353, 2.1458214376069558, 0.4697378902872196), (1.0844995274875342, 0.028255913321125842, 0.13939096928282343, 1.768085602671185, 0.3421892428671305), (1.0837930069392947, 0.033487654096044074, 0.1355058165731229, 1.853806718411886, 0.32999985655428965), (1.048972610134934, -0.007106370283626365, 0.21710917210376407, 1.919597098708155, 0.4015280714572575), (1.030030906418737, -0.034522008925614585, 0.13878089364964907, 1.9751441820045073, 0.4177711513067496), (1.008721127937058, -0.09064232808191049, 0.1967077593528289, 1.9079995054017391, 0.38277209135725304), (0.9448392684319641, -0.009325625815803575, 0.12414922452282001, 1.8599713151449533, 0.3602325544411885), (0.9587577038509302, -0.005705970513379538, 0.15556122324081473, 2.000322290992175, 0.4055435075101968), (0.9789615107788038, 0.025705639259039653, 0.17456632185504972, 1.9261116999230232, 0.3912309483117539)], NamedTuple{(:logprior, :cost),Tuple{Float64,Float64}}[(logprior = -2.4029525589861693, cost = 0.027941799440733973), (logprior = -2.4797105405239543, cost = 0.04883831831737731), (logprior = -2.39181076830222, cost = 0.03625685709393984), (logprior = -2.4144281693741196, cost = 0.04359663854393398), (logprior = -2.3950467887782083, cost = 0.024763839501895063), (logprior = -2.444472975575904, cost = 0.040453012760723536), (logprior = -2.368446495200553, cost = 0.11067471604030428), (logprior = -2.429646922529476, cost = 0.048213400411691545), (logprior = -2.398004903146267, cost = 0.04980937155170657), (logprior = -2.3930188260536647, cost = 0.044796189499584374)  …  (logprior = -2.41231925443176, cost = 0.04188862674039889), (logprior = -2.370793521147143, cost = 0.04714701654569488), (logprior = -2.4720585984156487, cost = 0.035380248244439416), (logprior = -2.4899696647164755, cost = 0.04726386127876543), (logprior = -2.4066827426983917, cost = 0.03895156839773478), (logprior = -2.394542432030444, cost = 0.04803220825111611), (logprior = -2.4236617230276494, cost = 0.03238471141572169), (logprior = -2.448485259519376, cost = 0.04977388005630224), (logprior = -2.4034641195977624, cost = 0.04803769925854807), (logprior = -2.4156027944032274, cost = 0.03498680483634149)])</code></pre><p>let&#39;s see the median and 95% confidence interval for the inferred parameters and let&#39;s compare them with the true values</p><pre><code class="language-julia">getstats(V) =
-    (median = median(V), lowerbound = quantile(V, 0.025), upperbound = quantile(V, 0.975));
-
-labels = (:μ_1, :μ_2, :σ_1, :σ_2, :prob)
-P = [getindex.(res, i) for i = 1:5]
-stats = getstats.(P)
-
-for is in eachindex(stats)
-    println(labels[is], &quot; ≡ &quot;, parameters[is], &quot; → &quot;, stats[is])
-end</code></pre><pre><code class="language-none">μ_1 ≡ 1.0 → (median = 1.0090378183824447, lowerbound = 0.9290645344385027, upperbound = 1.1138450547128615)
-μ_2 ≡ 0.0 → (median = 0.007623431494028346, lowerbound = -0.2875687577126701, upperbound = 0.11007061500933824)
-σ_1 ≡ 0.2 → (median = 0.20154956720207343, lowerbound = 0.12654836623436388, upperbound = 0.43030836909090436)
-σ_2 ≡ 2.0 → (median = 1.9189165591344097, lowerbound = 1.7398933004368602, upperbound = 2.115634416575058)
-prob ≡ 0.4 → (median = 0.3912735243612048, lowerbound = 0.32386281688593804, upperbound = 0.4986666121092581)</code></pre><p>The inferred parameters are close to nominal values</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Basic Usage</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 1 July 2020 13:58">Wednesday 1 July 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+D(P, N = 5000) = sqrt(mean(abs2, summ_data .- summ_model(P, N)));</code></pre><p>we can now run ABCDE to get the posterior distribution of our parameters given the dataset <code>data</code></p><pre><code class="language-julia">approx_density = ApproxPosterior(prior, D, 0.1)
+res =
+    sample(approx_density, AIS(15), MCMCThreads(), 4000, 4, burnin = 300, progress = false)
+@show res</code></pre><pre><code class="language-none">Object of type AISChain (total samples 16000)
+number of samples: 4000
+number of parameters: 5
+number of chains: 4
+┌─────────┬─────────────────────┬──────────────────────┬──────────────────────┬────────────────────────┬─────────────────────┐
+│         │                2.5% │                25.0% │                50.0% │                  75.0% │               97.5% │
+├─────────┼─────────────────────┼──────────────────────┼──────────────────────┼────────────────────────┼─────────────────────┤
+│ Param 1 │  0.8836744765474182 │   0.9750992871318304 │   1.0288335524193009 │     1.0793871556379548 │  1.1718794288040053 │
+│ Param 2 │  -0.585908822169695 │ -0.13212747698742228 │ -0.06679258908578191 │ -0.0059142102410773695 │ 0.10568328792161752 │
+│ Param 3 │ 0.07655695155226941 │    0.174055310159425 │  0.23929190902845282 │     0.3182147271476897 │ 0.47882838803149436 │
+│ Param 4 │    1.75516610861763 │   1.9095143144896845 │   2.0171678091636487 │     2.1223400373653902 │  2.3360429370562317 │
+│ Param 5 │ 0.31024402692021397 │   0.3759366118646673 │  0.41743035206730317 │    0.45846625985059175 │  0.5427607107531718 │
+└─────────┴─────────────────────┴──────────────────────┴──────────────────────┴────────────────────────┴─────────────────────┘
+</code></pre><p>the nominal values of the parameters lie inside the CI.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Basic Usage</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Saturday 4 July 2020 16:55">Saturday 4 July 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
