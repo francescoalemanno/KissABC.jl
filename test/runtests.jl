@@ -299,4 +299,3 @@ mcmc(approx_density,nparticles=100,generations=5000,parallel=true)
 
 problem.target
 =#
-)
