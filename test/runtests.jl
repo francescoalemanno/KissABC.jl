@@ -56,7 +56,7 @@ end
     tinydata = (0, 11)
     nparticles = 5000
     modelabc = ApproxPosterior(pri, x -> sum(abs, model(x, 0) .- tinydata), 0.1)
-    results_st = sample(modelabc, AIS(500), 5000, burnin = 100, progress = false)
+    results_st = sample(modelabc, AIS(500), 5000, ntransitions = 100, progress = false)
     @show results_st
     @test IndexStyle(results_st) == IndexCartesian()
     chain = results_st[:, 1, 1]
