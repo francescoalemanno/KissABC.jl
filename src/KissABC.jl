@@ -23,7 +23,56 @@ struct AISState{S,L}
     i::Int
     AISState(s::S, l::L, i = 1) where {S,L} = new{S,L}(s, l, i)
 end
+"""
+    AISChain(chains::NTuple{N,Vector})
+    AISChain(chain::Vector) = AISChain((chain,))
 
+this type is useful for gathering the results of `sample`,
+
+# Example
+
+```julia
+genchain() = [ (rand((1,2,3)), randn()) for i in 1:100] # simple useless generator of chains
+C=AISChain((genchain(),genchain(),genchain(),genchain())) # 4 chains
+```
+
+output:
+
+```
+Object of type AISChain (total samples 400)
+number of samples: 100
+number of parameters: 2
+number of chains: 4
+┌─────────┬────────────────────┬─────────────────────┬────────────────────┬────────────────────┬───────────────────┐
+│         │               2.5% │               25.0% │              50.0% │              75.0% │             97.5% │
+├─────────┼────────────────────┼─────────────────────┼────────────────────┼────────────────────┼───────────────────┤
+│ Param 1 │                1.0 │                 1.0 │                2.0 │                3.0 │               3.0 │
+│ Param 2 │ -1.830019623768731 │ -0.5840379394249825 │ 0.1015397387884777 │ 0.7357170602574647 │ 1.752198316412034 │
+└─────────┴────────────────────┴─────────────────────┴────────────────────┴────────────────────┴───────────────────┘
+```
+
+individual samples can be accessed in an 3d-array like fashion:
+
+```julia
+C[1:90, 1, 1:2] # we are taking from the samples `1:90` of the chains `1:2`, only the parameter `1` 
+```
+
+output:
+
+```
+90×2 Array{Real,2}:
+ 2  1
+ 2  2
+ 2  3
+ 1  2
+ 1  1
+ ⋮
+ 2  3
+ 1  3
+ 3  3
+ 2  2
+```
+"""
 struct AISChain{T<:Union{Tuple,Vector}} <: AbstractArray{Real,3}
     samples::T
     AISChain(s::T) where {T} = new{T}(s)
@@ -102,18 +151,25 @@ end
 
 # Generalities
 
-This function will run an Affine Invariant MCMC sampler, and will return an AISChain object with all the parameter samples,
+This function will run an Affine Invariant MCMC sampler, and will return an `AISChain` object with all the parameter samples,
 the mandatory parameters are:
 
 `model`: a subtype of `AbstractDensity`, look at `ApproxPosterior`, `ApproxKernelizedPosterior`, `CommonLogDensity`.
+
 `N`: number of particles in the ensemble, this particles will be evolved to generate new samples.
+
 `Ns`: total number of samples which must be recorded.
+
 `Nc`: total number of chains to run in parallel if MCMCThreads or MCMCDistributed is enabled.
+
 
 the optional arguments available are:
 
+
 `burnin`: number of mcmc steps per particle prior to saving any sample.
+
 `ntransitions`: number of mcmc steps per particle between each sample.
+
 `progress`: a boolean to disable verbosity
 
 # Minimal Example for `CommonLogDensity`:
