@@ -152,6 +152,24 @@ end
     @test abs(mean(res) - 1.5) <= 0.01
 end
 
+@testset "MVNormal vector test + 4 MCMCThreads" begin
+    plan =
+        ApproxPosterior(MultivariateNormal(4, 1.0), x -> abs(sum(abs2, x)^0.5 - 1.5), 0.01)
+    res = sample(
+        plan,
+        AIS(20),
+        MCMCThreads(),
+        100,
+        4,
+        burnin = 500,
+        ntransitions = 40,
+        progress = false,
+    )
+    err = AISChain(ntuple(j -> [plan.cost(res[i, :, j]) for i = 1:100], 4))
+    @show err
+    @test mean(err) <= 0.02
+end
+
 #benchmark
 #=
 using KissABC, Distributions, Random
