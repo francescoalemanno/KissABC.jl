@@ -54,6 +54,15 @@ D(P, N = 5000) = sqrt(mean(abs2, summ_data .- summ_model(P, N)));
 
 # We can use `AIS` which is an Affine Invariant MC algorithm via the `sample` function, to get the posterior distribution of our parameters given the dataset `data`
 approx_density = ApproxPosterior(prior, D, 0.1)
-res = sample(approx_density, AIS(50), MCMCThreads(), 1000, 4, burnin = 300, ntransitions=10, progress = false)
+res = sample(
+    approx_density,
+    AIS(50),
+    MCMCThreads(),
+    1000,
+    4,
+    burnin = 300,
+    ntransitions = 10,
+    progress = false,
+)
 @show res
 # the nominal values of the parameters lie inside the CI.
