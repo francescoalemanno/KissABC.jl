@@ -36,28 +36,43 @@ we have chosen a uniform distribution over the interval [1,3] for μ and a norma
 
 Now all that we need is a distance function to compare the true dataset to the simulated dataset, for this purpose comparing mean and variance is optimal,
 ```julia
-function cost(x)
+function cost((μ,σ)) 
+    x=sim((μ,σ))
     y=tdata
     d1 = mean(x) - mean(y)
     d2 = std(x) - std(y)
     hypot(d1, d2 * 50)
 end
 ```
-Now we are all set, we can use `AIS` which is an Affine Invariant MC algorithm via the `sample` function, to simulate the posterior distribution for this model, inferring ``μ` and `σ`
+Now we are all set, we can use `AIS` which is an Affine Invariant MC algorithm via the `sample` function, to simulate the posterior distribution for this model, inferring `μ` and `σ`
 ```julia
 approx_density = ApproxKernelizedPosterior(prior,cost,0.005)
-res = sample(plan,AIS(10),10000,ntransitions=50)
+res = sample(approx_density,AIS(10),1000,ntransitions=100)
 ```
-We chose a tolerance on distances equal to `0.05`, a number of particles equal to `10`, we chose a number of steps per sample `ntransitions = 50` and we acquiring `10000` samples, the simulated posterior results will be `res`.
-We can now extract the results:
+
+the repl output is:
+
+```TTY
+Sampling 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| Time: 0:00:00
+Object of type AISChain (total samples 1000)
+number of samples: 1000
+number of parameters: 2
+number of chains: 1
+┌─────────┬─────────────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────────────────────┐
+│         │                2.5% │               25.0% │               50.0% │               75.0% │                97.5% │
+├─────────┼─────────────────────┼─────────────────────┼─────────────────────┼─────────────────────┼──────────────────────┤
+│ Param 1 │  1.9889104510710525 │  1.9958478705688778 │   1.999126578901652 │   2.002886778724749 │   2.0095096952698044 │
+│ Param 2 │ 0.03864543664435372 │ 0.03979188808422054 │ 0.04040515336501156 │ 0.04103079769548673 │ 0.042449787918102805 │
+└─────────┴─────────────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────────────────────┘
+```
+
+We chose a tolerance on distances equal to `0.005`, a number of particles equal to `10`, we chose a number of steps per sample `ntransitions = 100` and we acquired `1000` samples.
+For comparison let's extract some prior samples
 ```julia
 prsample=[rand(prior) for i in 1:5000] #some samples from the prior for comparison
-μ_pr=getindex.(prsample,1) # μ samples from the prior
-σ_pr=getindex.(prsample,2) # σ samples from the prior
-μ_p=vec(res[:,1,:]) # μ samples from the posterior
-σ_p=vec(res[:,2,:]) # σ samples from the posterior
 ```
-and plotting prior and posterior side by side we get:
+plotting prior and posterior side by side we get:
 
 ![plots of the Inference Results](images/inf_normaldist.png "Inference Results")
+
 we can see that the algorithm has correctly inferred both parameters, this exact recipe will work for much more complicated models and simulations, with some tuning.
