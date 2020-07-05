@@ -174,7 +174,7 @@ end
     @test mean(err) <= 0.02
 end
 
-@test KissABC.boxchain((1,2,3)) == (1,2,3)
+@test KissABC.boxchain((1, 2, 3)) == (1, 2, 3)
 
 @testset "CommonLogDensity: rosenbrock banana density" begin
     D = CommonLogDensity(
@@ -183,7 +183,7 @@ end
         x -> -100 * (x[1] - x[2]^2)^2 - (x[2] - 1)^2,
     )
     @test length(D) == 2
-    @test typeof(KissABC.unconditional_sample(Random.GLOBAL_RNG,D)) <: KissABC.Particle
+    @test typeof(KissABC.unconditional_sample(Random.GLOBAL_RNG, D)) <: KissABC.Particle
     res = sample(D, AIS(50), 1000, ntransitions = 100, burnin = 500, progress = false)
     @show res
     Clπ = AISChain(D.lπ.([identity.(x) for x in eachrow(res[:, :, 1])]))
