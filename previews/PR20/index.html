@@ -13,12 +13,12 @@ res =
 number of samples: 2000
 number of parameters: 2
 number of chains: 1
-┌─────────┬─────────────────────┬──────────────────────┬─────────────────────┬─────────────────────┬──────────────────────┐
-│         │                2.5% │                25.0% │               50.0% │               75.0% │                97.5% │
-├─────────┼─────────────────────┼──────────────────────┼─────────────────────┼─────────────────────┼──────────────────────┤
-│ Param 1 │  1.9111884219277235 │    1.957592888418143 │   1.995642026895117 │    2.03679028230663 │   2.0837116048296966 │
-│ Param 2 │ 0.03839018471170967 │ 0.039859999206885016 │ 0.04081219609850067 │ 0.04169744397483188 │ 0.043482050209884736 │
-└─────────┴─────────────────────┴──────────────────────┴─────────────────────┴─────────────────────┴──────────────────────┘
+┌─────────┬────────────────────┬─────────────────────┬──────────────────────┬─────────────────────┬─────────────────────┐
+│         │               2.5% │               25.0% │                50.0% │               75.0% │               97.5% │
+├─────────┼────────────────────┼─────────────────────┼──────────────────────┼─────────────────────┼─────────────────────┤
+│ Param 1 │ 1.9122332309588055 │  1.9571386534109627 │   1.9999869339628316 │  2.0421383207902712 │  2.0876587324788827 │
+│ Param 2 │ 0.0382150342632504 │ 0.03991771689890197 │ 0.040885152490184665 │ 0.04181027880007369 │ 0.04358823488020189 │
+└─────────┴────────────────────┴─────────────────────┴──────────────────────┴─────────────────────┴─────────────────────┘
 </code></pre><p>the parameters we chose are: a tolerance on distances equal to <code>0.1</code>, a number of samples equal to <code>2000</code>, the simulated posterior results are in <code>res</code>. We can now extract the inference results:</p><pre><code class="language-julia">prsample = [rand(prior) for i = 1:2000] #some samples from the prior for comparison
 μ_pr = getindex.(prsample, 1) # μ samples from the prior
 σ_pr = getindex.(prsample, 2) # σ samples from the prior
@@ -57,4 +57,4 @@ bp = stephist(
     normalize = true,
 )
 plot(a, ap, b, bp)
-savefig(&quot;inference.svg&quot;);</code></pre><p><img src="inference.svg" alt="inference_plot"/></p><p>we can see that the algorithm has correctly inferred both parameters, this exact recipe will work for much more complicated models and simulations, with some tuning.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="example_1/">Example: Gaussian Mixture »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Thursday 9 July 2020 11:42">Thursday 9 July 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+savefig(&quot;inference.svg&quot;);</code></pre><p><img src="inference.svg" alt="inference_plot"/></p><p>we can see that the algorithm has correctly inferred both parameters, this exact recipe will work for much more complicated models and simulations, with some tuning.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="example_1/">Example: Gaussian Mixture »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Thursday 9 July 2020 11:57">Thursday 9 July 2020</span>. Using Julia version 1.4.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
