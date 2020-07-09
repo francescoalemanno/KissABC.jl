@@ -132,9 +132,9 @@ end
     sim(μ) = μ + rand((randn() * 0.1, randn()))
     cost(x) = abs(sim(x) - 0.0)
     plan = ApproxPosterior(prior, cost, 0.01)
-    res =  sample(plan, AIS(50), 2000, ntransitions=100, burnin = 100, progress = false)
+    res = sample(plan, AIS(50), 2000, ntransitions = 100, burnin = 100, progress = false)
     plan = ApproxKernelizedPosterior(prior, cost, 0.01 / sqrt(2))
-    resk = sample(plan, AIS(50), 2000, ntransitions=100, burnin = 100, progress = false)
+    resk = sample(plan, AIS(50), 2000, ntransitions = 100, burnin = 100, progress = false)
     testst(alg, r) = begin
         m = mean(abs, st(r[:]) - st_n)
         println(":", alg, ": testing m = ", m)
@@ -165,7 +165,7 @@ end
         ntransitions = 40,
         progress = false,
     )
-    err = AISChain(ntuple(j -> [plan.cost(res[i, :, j]) for i = 1:size(res,1)], 4))
+    err = AISChain(ntuple(j -> [plan.cost(res[i, :, j]) for i = 1:size(res, 1)], 4))
     show(stdout, MIME("text/plain"), err)
     io = IOBuffer()
     show(io, MIME("text/plain"), err)
@@ -202,16 +202,12 @@ end
 @testset "Handling of ∞ costs" begin
     D = CommonLogDensity(
         2,
-        rng -> rand(2).*(2,1).-(1,0),
-        x -> ifelse(sum(abs2,x)<=1,0.0,-Inf),
+        rng -> rand(2) .* (2, 1) .- (1, 0),
+        x -> ifelse(sum(abs2, x) <= 1, 0.0, -Inf),
     )
-    D2 = CommonLogDensity(
-        2,
-        rng -> rand(2).*(2,1).-(1,0),
-        x -> -Inf,
-    )
+    D2 = CommonLogDensity(2, rng -> rand(2) .* (2, 1) .- (1, 0), x -> -Inf)
     res = sample(D, AIS(50), 1000, ntransitions = 100, burnin = 500, progress = false)
-    @test mean(abs.(mean(res,dims=1))) < 0.1
+    @test mean(abs.(mean(res, dims = 1))) < 0.1
     @test_throws ErrorException sample(D2, AIS(50), 10, progress = false)
 end
 

@@ -54,7 +54,7 @@ number of chains: 4
 individual samples can be accessed in an 3d-array like fashion:
 
 ```julia
-C[1:90, 1, 1:2] # we are taking from the samples `1:90` of the chains `1:2`, only the parameter `1` 
+C[1:90, 1, 1:2] # we are taking from the samples `1:90` of the chains `1:2`, only the parameter `1`
 ```
 
 output:
@@ -91,7 +91,7 @@ function AbstractMCMC.step(
     model::AbstractMCMC.AbstractModel,
     spl::AIS;
     burnin::Int = 0,
-    retry_sampling::Int =100,
+    retry_sampling::Int = 100,
     kwargs...,
 )
     nparticles = spl.nparticles
@@ -104,13 +104,14 @@ function AbstractMCMC.step(
 
     particles = [op(float, unconditional_sample(rng, model)) for i = 1:nparticles]
     logdensity = [loglike(model, push_p(model, particles[i])) for i = 1:nparticles]
-    retrys=retry_sampling*nparticles
+    retrys = retry_sampling * nparticles
     for i = 1:nparticles
-        while !is_valid_logdensity(model,logdensity[i])
-            particles[i]=op(float, unconditional_sample(rng, model))
-            logdensity[i]=loglike(model, push_p(model, particles[i]))
-            retrys-=1
-            retrys < 0 && error("Prior leads to ∞ costs too often, tune the prior or increase `retry_sampling`.")
+        while !is_valid_logdensity(model, logdensity[i])
+            particles[i] = op(float, unconditional_sample(rng, model))
+            logdensity[i] = loglike(model, push_p(model, particles[i]))
+            retrys -= 1
+            retrys < 0 &&
+                error("Prior leads to ∞ costs too often, tune the prior or increase `retry_sampling`.")
         end
     end
 
@@ -179,6 +180,8 @@ the optional arguments available are:
 `burnin`: number of mcmc steps per particle prior to saving any sample.
 
 `ntransitions`: number of mcmc steps per particle between each sample.
+
+`retry_sampling`: number of maximum attempts to resample an initial particle whose cost (or log-density) is ±∞ or NaN.
 
 `progress`: a boolean to disable verbosity
 
