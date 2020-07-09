@@ -132,9 +132,9 @@ end
     sim(μ) = μ + rand((randn() * 0.1, randn()))
     cost(x) = abs(sim(x) - 0.0)
     plan = ApproxPosterior(prior, cost, 0.01)
-    res = sample(plan, AIS(100), 2000, burnin = 10000, progress = false)
+    res =  sample(plan, AIS(50), 2000, ntransitions=100, burnin = 100, progress = false)
     plan = ApproxKernelizedPosterior(prior, cost, 0.01 / sqrt(2))
-    resk = sample(plan, AIS(100), 2000, burnin = 10000, progress = false)
+    resk = sample(plan, AIS(50), 2000, ntransitions=100, burnin = 100, progress = false)
     testst(alg, r) = begin
         m = mean(abs, st(r[:]) - st_n)
         println(":", alg, ": testing m = ", m)
