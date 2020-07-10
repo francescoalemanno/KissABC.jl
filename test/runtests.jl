@@ -132,9 +132,9 @@ end
     sim(μ) = μ + rand((randn() * 0.1, randn()))
     cost(x) = abs(sim(x) - 0.0)
     plan = ApproxPosterior(prior, cost, 0.01)
-    res = sample(plan, AIS(100), 2000, burnin = 10000, progress = false)
+    res = sample(plan, AIS(50), 2000, ntransitions = 100, burnin = 100, progress = false)
     plan = ApproxKernelizedPosterior(prior, cost, 0.01 / sqrt(2))
-    resk = sample(plan, AIS(100), 2000, burnin = 10000, progress = false)
+    resk = sample(plan, AIS(50), 2000, ntransitions = 100, burnin = 100, progress = false)
     testst(alg, r) = begin
         m = mean(abs, st(r[:]) - st_n)
         println(":", alg, ": testing m = ", m)
@@ -165,7 +165,7 @@ end
         ntransitions = 40,
         progress = false,
     )
-    err = AISChain(ntuple(j -> [plan.cost(res[i, :, j]) for i = 1:100], 4))
+    err = AISChain(ntuple(j -> [plan.cost(res[i, :, j]) for i = 1:size(res, 1)], 4))
     show(stdout, MIME("text/plain"), err)
     io = IOBuffer()
     show(io, MIME("text/plain"), err)
@@ -198,47 +198,37 @@ end
     =#
 end
 
+
+@testset "Handling of ∞ costs" begin
+    D = CommonLogDensity(
+        2,
+        rng -> rand(2) .* (2, 1) .- (1, 0),
+        x -> ifelse(sum(abs2, x) <= 1, 0.0, -Inf),
+    )
+    D2 = CommonLogDensity(2, rng -> rand(2) .* (2, 1) .- (1, 0), x -> -Inf)
+    res = sample(D, AIS(50), 1000, ntransitions = 100, burnin = 500, progress = false)
+    @test mean(abs.(mean(res, dims = 1))) < 0.1
+    @test_throws ErrorException sample(D2, AIS(50), 10, progress = false)
+end
+
 #benchmark
 #=
 using KissABC, Distributions, Random
 function cost((u1, p1); n=10^6, raw=false)
- u2 = (1.0 - u1*p1)/(1.0 - p1)
- x = randexp(n) .* ifelse.(rand(n) .< p1, u1, u2)
- raw && return x
- sqrt(sum(abs2,[std(x)-2.2, median(x)-0.4]./[2.2,0.4]))
+    u2 = (1.0 - u1*p1)/(1.0 - p1)
+    x = randexp(n) .* ifelse.(rand(n) .< p1, u1, u2)
+    raw && return x
+    sqrt(sum(abs2,[std(x)-2.2, median(x)-0.4]./[2.2,0.4]))
 end
 
 plan=ApproxPosterior(Factored(Uniform(0,1), Uniform(0.5,1)), cost, 0.01)
-
-@show res=sample(plan, AIS(50),MCMCThreads(),2500,4,burnin=50)
-res
-using Statistics
-
-function get_CI(x)
-    [quantile(x[:,i,:][:],[0.025,0.25,0.5,0.75,0.975]) for i = 1:size(x,2)]
-end
-
 using MCMCChains
-
-Chains(res,start=[2000,2000,2000,2000])
-
-240 generations:
- [0.48958933397111065, 0.4924062224370781, 0.49559446402487584]
- [0.879783065265908, 0.8816472031816496, 0.8835803050367947]
-120 generations:
- [0.4893221894893949, 0.49278449533673585, 0.494863093578758]
- [0.8795982153875357, 0.8816146345915951, 0.8829915018185673]
-60 generations:
- [0.4887524655164148, 0.49234470862896673, 0.49502567359353133]
- [0.8796953221457162, 0.8814094610516047, 0.8833899764047788]
-30 generations:
- [0.48893164848681747, 0.49163740259340305, 0.4944261757524125]
- [0.8795333045815598, 0.8809134893725196, 0.8829819098348083]
+@show res=sample(plan, AIS(100),100,burnin=100)
+@show Chains(res[10000:end,:,:])
 early stop:
  [0.49006664933267297, 0.49313860531909304, 0.49497013116625105]
  [0.8804136291097875, 0.8819843728641816, 0.8834306754737902]
 
-quantile.(DiscreteNonParametric(getindex.(res,2),del),[0.25,0.5,0.75])
 =#
 #plotting stuff
 

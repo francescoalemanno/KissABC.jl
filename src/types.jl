@@ -50,18 +50,29 @@ end
 
 function loglike(density::ApproxKernelizedPosterior, sample::Particle)
     lp = logpdf(density.prior, sample.x)
-    isfinite(lp) || return (logprior = lp, loglikelihood = lp)
-    (logprior = lp, loglikelihood = -0.5 * abs2(density.cost(sample.x) / density.scale))
+    ll = lp
+    if isfinite(lp)
+        ll = -0.5 * abs2(density.cost(sample.x) / density.scale)
+    end
+    (logprior = lp, loglikelihood = ll)
 end
 
-accept(
+is_valid_logdensity(density::ApproxKernelizedPosterior, ld) = isfinite(sum(ld))
+
+function accept(
     density::ApproxKernelizedPosterior,
     rng::AbstractRNG,
     old_ld,
     new_ld,
     ld_correction,
-) = -randexp(rng) <= ld_correction + sum(new_ld) - sum(old_ld)
+)
+    isfinite(ld_correction) || error("ld_correction is invalid")
+    is_valid_logdensity(density, old_ld) || error("starting sample invalid.")
+    is_valid_logdensity(density, new_ld) || return false
 
+    lW = ld_correction + sum(new_ld) - sum(old_ld)
+    return -randexp(rng) <= lW
+end
 struct ApproxPosterior{P<:Distribution,C,S<:Real} <: AbstractApproxPosterior
     prior::P
     cost::C
@@ -72,14 +83,25 @@ end
 
 function loglike(density::ApproxPosterior, sample::Particle)
     lp = logpdf(density.prior, sample.x)
-    isfinite(lp) || return (logprior = lp, cost = -lp)
-    (logprior = lp, cost = density.cost(sample.x))
+    cs = -lp
+    if isfinite(lp)
+        cs = density.cost(sample.x)
+    end
+    (logprior = lp, cost = cs)
 end
 
-accept(density::ApproxPosterior, rng::AbstractRNG, old_ld, new_ld, ld_correction) =
-    (-randexp(rng) <= ld_correction + new_ld.logprior - old_ld.logprior) &&
-    new_ld.cost <= max(density.maxcost, old_ld.cost)
+is_valid_logdensity(density::ApproxPosterior, ld) =
+    isfinite(ld.cost) && isfinite(ld.logprior)
 
+function accept(density::ApproxPosterior, rng::AbstractRNG, old_ld, new_ld, ld_correction)
+    isfinite(ld_correction) || error("ld_correction is invalid")
+    is_valid_logdensity(density, old_ld) || error("starting sample invalid.")
+    is_valid_logdensity(density, new_ld) || return false
+
+    lW = ld_correction + new_ld.logprior - old_ld.logprior
+    lW2 = max(density.maxcost, old_ld.cost) - new_ld.cost
+    (-randexp(rng) <= lW) && lW2 >= 0
+end
 struct CommonLogDensity{N,A,B} <: AbstractDensity
     sample_init::A
     lπ::B
@@ -96,9 +118,14 @@ function loglike(density::CommonLogDensity, sample::Particle)
     density.lπ(sample.x)
 end
 
-accept(density::CommonLogDensity, rng::AbstractRNG, old_ld, new_ld, ld_correction) =
-    -randexp(rng) <= ld_correction + new_ld - old_ld
+is_valid_logdensity(density::CommonLogDensity, ld) = isfinite(ld)
 
+function accept(density::CommonLogDensity, rng::AbstractRNG, old_ld, new_ld, ld_correction)
+    isfinite(ld_correction) || error("ld_correction is invalid")
+    is_valid_logdensity(density, old_ld) || error("starting sample invalid.")
+    is_valid_logdensity(density, new_ld) || return false
+    return -randexp(rng) <= ld_correction + new_ld - old_ld
+end
 
 """
     ApproxKernelizedPosterior(
