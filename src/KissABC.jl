@@ -90,7 +90,6 @@ function AbstractMCMC.step(
     rng::Random.AbstractRNG,
     model::AbstractMCMC.AbstractModel,
     spl::AIS;
-    burnin::Int = 0,
     retry_sampling::Int = 100,
     kwargs...,
 )
@@ -115,9 +114,6 @@ function AbstractMCMC.step(
         end
     end
 
-    for reps = 1:burnin, i = 1:nparticles
-        transition!(model, particles, logdensity, i, rng)
-    end
     push_p(model, particles[end]), AISState(particles, logdensity)
 end
 
@@ -148,11 +144,8 @@ function AbstractMCMC.bundle_samples(
     return AISChain([samples[i].x for i in eachindex(samples)])
 end
 
-boxchain(a::AbstractVector) = (a,)
-boxchain(a::Tuple) = a
-
-function AbstractMCMC.chainscat(a::AISChain, b::AISChain)
-    return AISChain((boxchain(a.samples)..., boxchain(b.samples)...))
+function AbstractMCMC.chainsstack(c::AbstractVector{<:AISChain})
+    return AISChain(Tuple(map(x->x.samples,c)))
 end
 
 """
@@ -177,7 +170,7 @@ the mandatory parameters are:
 the optional arguments available are:
 
 
-`burnin`: number of mcmc steps per particle prior to saving any sample.
+`discard_initial`: number of mcmc particles to discard before saving any sample.
 
 `ntransitions`: number of mcmc steps per particle between each sample.
 
@@ -194,7 +187,7 @@ D = CommonLogDensity(
     rng -> randn(rng, 2), # initial sampling strategy
     x -> -100 * (x[1] - x[2]^2)^2 - (x[2] - 1)^2, # rosenbrock banana log-density
 )
-res = sample(D, AIS(50), 1000, ntransitions = 100, burnin = 500, progress = false)
+res = sample(D, AIS(50), 1000, ntransitions = 100, discard_initial = 500, progress = false)
 println(res)
 ```
 
@@ -220,7 +213,7 @@ sim(μ) = μ + rand((randn() * 0.1, randn())) # simulator function
 cost(x) = abs(sim(x) - 0.0) # cost function to compare simulations to target data, in this case simply '0'
 plan = ApproxPosterior(prior, cost, 0.01) # Approximate model of log-posterior density (ABC)
 #                                           ApproxKernelizedPosterior can be used in the same fashion
-res = sample(plan, AIS(100), 2000, burnin = 10000, progress = false)
+res = sample(plan, AIS(100), 2000, discard_initial = 10000, progress = false)
 println(res)
 ```
 

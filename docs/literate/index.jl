@@ -34,7 +34,7 @@ end
 cost(x) = dist(tdata, sim(x))
 approx_density = ApproxPosterior(prior, cost, 0.1)
 res =
-    sample(approx_density, AIS(50), 2000, burnin = 100, ntransitions = 10, progress = false)
+    sample(approx_density, AIS(50), 2000, discard_initial = 1000, ntransitions = 10, progress = false)
 @show res
 
 # the parameters we chose are: a tolerance on distances equal to `0.1`, a number of samples equal to `2000`, the simulated posterior results are in `res`.
