@@ -13,26 +13,26 @@ function model(P, N)
     R
 end</code></pre><pre class="documenter-example-output">model (generic function with 1 method)</pre><p>Let&#39;s use the model to generate some data, this data will constitute our dataset</p><pre><code class="language-julia">parameters = (1.0, 0.0, 0.2, 2.0, 0.4)
 data = model(parameters, 5000)</code></pre><pre class="documenter-example-output">5000-element Array{Float64,1}:
-  1.0015645920168448
-  3.7070488748857744
- -2.2053452510759413
-  1.208371731470813
-  3.0659020687678007
-  0.6864680052913203
- -0.6592709076281393
-  0.7865290366952358
-  0.8797044822692406
- -0.3349305898226944
+ -2.2895122489992255
+ -1.8775607045753848
+  0.4818610219445898
+  3.667177589433255
+  0.19430725321195438
+ -2.095204123599377
+  0.05814272334043317
+ -0.9701638518211813
+  0.12395461725380866
+  0.9556941357736444
   ⋮
- -0.9918407947126152
-  1.2206048211156668
-  2.691272579530544
- -3.4782989217881815
-  1.2293706918661682
-  1.7558556159058551
-  3.5320136459593483
- -0.545836496221819
-  1.0402992870577006</pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
+  0.9179027858710509
+  0.9604429557593315
+  1.0633231968045849
+  1.5995827926172699
+ -2.1452533748651157
+ -2.00487665280972
+  3.9092953371544397
+  0.9530848836496082
+  1.0562075984221877</pre><p>let&#39;s look at the data</p><pre><code class="language-julia">using Plots
 histogram(data)
 savefig(&quot;ex1_hist1.svg&quot;);</code></pre><p><img src="../ex1_hist1.svg" alt="ex1_hist1"/></p><p>we can now try to infer all parameters using <code>KissABC</code>, first of all we need to define a reasonable prior for our model</p><pre><code class="language-julia">prior = Factored(
     Uniform(0, 2), # there is surely a peak between 0 and 2
@@ -40,7 +40,7 @@ savefig(&quot;ex1_hist1.svg&quot;);</code></pre><p><img src="../ex1_hist1.svg" a
     Uniform(0, 1), # the peak has surely a width below 1
     Uniform(0, 4), # the smeared distribution surely has a width less than 4
     Beta(2, 2), # the number of total events from both distributions look about the same, so we will favor 0.5 just a bit
-);</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre class="documenter-example-output">(1.1533648403215575, 0.24364032766168053, 0.3833042941112965, 1.4043788792154892, 0.6226877540647446)</pre><p>now we need a function to compute summary statistics for our data, this is not the optimal choice, but it will work out anyway</p><pre><code class="language-julia">function S(x)
+);</code></pre><p>let&#39;s look at a sample from the prior, to see that it works</p><pre><code class="language-julia">rand(prior)</code></pre><pre class="documenter-example-output">(0.7206691472813223, -0.9336044678115951, 0.9907706779472665, 3.964603988475771, 0.1414046689632467)</pre><p>now we need a function to compute summary statistics for our data, this is not the optimal choice, but it will work out anyway</p><pre><code class="language-julia">function S(x)
     r = (0.1, 0.2, 0.45, 0.55, 0.8, 0.9)
     quantile(x, r)
 end</code></pre><pre class="documenter-example-output">S (generic function with 1 method)</pre><p>we will define a function to use the <code>model</code> and summarize it&#39;s results</p><pre><code class="language-julia">summ_model(P, N) = S(model(P, N));</code></pre><p>now we need a distance function to compare the summary statistics of target data and simulated data</p><pre><code class="language-julia">summ_data = S(data)
@@ -59,13 +59,13 @@ res = sample(
 number of samples: 1000
 number of parameters: 5
 number of chains: 4
-┌─────────┬─────────────────────┬──────────────────────┬──────────────────────┬─────────────────────┬─────────────────────┐
-│         │                2.5% │                25.0% │                50.0% │               75.0% │               97.5% │
-├─────────┼─────────────────────┼──────────────────────┼──────────────────────┼─────────────────────┼─────────────────────┤
-│ Param 1 │  0.8596745032151674 │   0.9459868079438893 │    1.005648638756554 │  1.0647594157916047 │   1.158053802673603 │
-│ Param 2 │  -0.466778899943933 │ -0.09304288563082955 │ -0.03148454689384343 │ 0.02457194693752922 │ 0.12430070463507475 │
-│ Param 3 │ 0.07271718385054139 │  0.16701566535803902 │  0.22393491734289903 │ 0.29668142138311926 │ 0.45484164639759334 │
-│ Param 4 │   1.722928255536612 │    1.880841013249262 │   1.9942856008978762 │  2.1089042227436443 │   2.306593462365694 │
-│ Param 5 │  0.3009071820715699 │    0.364305626722414 │  0.40686379621818175 │ 0.44571198238168175 │  0.5433019718560781 │
-└─────────┴─────────────────────┴──────────────────────┴──────────────────────┴─────────────────────┴─────────────────────┘
-</pre><p>the nominal values of the parameters lie inside the CI.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Basic Usage</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Saturday 5 September 2020 08:22">Saturday 5 September 2020</span>. Using Julia version 1.5.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+┌─────────┬──────────────────────┬──────────────────────┬─────────────────────┬─────────────────────┬─────────────────────┐
+│         │                 2.5% │                25.0% │               50.0% │               75.0% │               97.5% │
+├─────────┼──────────────────────┼──────────────────────┼─────────────────────┼─────────────────────┼─────────────────────┤
+│ Param 1 │   0.8148209103936084 │   0.9217244180984138 │  0.9809376047608094 │  1.0443653914121915 │   1.155622794334662 │
+│ Param 2 │ -0.13230123900400526 │ 0.018495044301996444 │ 0.07801699312747397 │ 0.13260204015046528 │ 0.21491088691012228 │
+│ Param 3 │ 0.025031993973052755 │  0.12428147362374148 │  0.1844624689352832 │  0.2508394438850662 │  0.4180918513214995 │
+│ Param 4 │    1.704116922089977 │   1.8366960074058043 │  1.9355598163417391 │   2.052767350116823 │  2.2768003702433006 │
+│ Param 5 │  0.26689171998481226 │    0.329535451880738 │ 0.37437967640596165 │ 0.41755730877462494 │  0.4810653416274664 │
+└─────────┴──────────────────────┴──────────────────────┴─────────────────────┴─────────────────────┴─────────────────────┘
+</pre><p>the nominal values of the parameters lie inside the CI.</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Basic Usage</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Saturday 5 September 2020 08:26">Saturday 5 September 2020</span>. Using Julia version 1.5.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
