@@ -60,7 +60,7 @@ res = sample(
     MCMCThreads(),
     1000,
     4,
-    burnin = 300,
+    discard_initial = 3000,
     ntransitions = 10,
     progress = false,
 )

@@ -70,7 +70,7 @@ end
     sim(μ) = μ * μ + 1
     cost(x) = abs(sim(x) - 1.5)
     abc = ApproxKernelizedPosterior(pri, cost, 0.001)
-    res = sample(abc, AIS(12), 100, burnin = 70, progress = false)
+    res = sample(abc, AIS(12), 500, discard_initial = 1000, progress = false)
     @show res
     @test abs(mean(sim.(res[:])) - 1.5) <= 0.005
 end
@@ -80,19 +80,18 @@ end
     sim(μ) = μ * μ + 1
     cost(x) = abs(sim(x) - 1.5)
     abc = ApproxKernelizedPosterior(pri, cost, 0.001)
-    res = sample(abc, AIS(12), MCMCThreads(), 100, 50, burnin = 50, progress = false)
+    res = sample(abc, AIS(12), MCMCThreads(), 100, 50, discard_initial = 50*12, progress = false)
     @show res
     @test size(res) == (100, 1, 50)
     @test abs(mean(sim.(res[:])) - 1.5) <= 0.005
 end
-
 
 @testset "Normal dist + Uniform Distr inference" begin
     pri = Factored(Normal(1, 0.5), DiscreteUniform(1, 10))
     sim((n, du)) = (n * n + du) * (n + randn() * 0.01)
     cost(x) = abs(sim(x) - 5.5)
     model_abc = ApproxPosterior(pri, cost, 0.01)
-    res = sample(model_abc, AIS(100), 1000, burnin = 500, progress = false)
+    res = sample(model_abc, AIS(100), 1000, discard_initial = 500, progress = false)
     @show res
     ress = [(res[i, :, 1]...,) for i in size(res, 1)]
     @test abs(mean(sim.(ress)) - 5.5) < 0.2
@@ -110,7 +109,7 @@ end
     prior = Factored(Uniform(0, 1), Uniform(0, 4))
     cost(x) = sum(abs, brownianrms(x, 30) .- tdata) / length(tdata)
     modelabc = ApproxPosterior(prior, cost, 0.1)
-    sim = sample(modelabc, AIS(50), 100, burnin = 1000, progress = false)
+    sim = sample(modelabc, AIS(50), 100, discard_initial = 50000, progress = false)
     @show sim
     @test all(
         abs.(((mean(sim[:, 1, 1]), mean(sim[:, 2, 1])) .- params) ./ params,) .< (0.1, 0.1),
@@ -132,9 +131,9 @@ end
     sim(μ) = μ + rand((randn() * 0.1, randn()))
     cost(x) = abs(sim(x) - 0.0)
     plan = ApproxPosterior(prior, cost, 0.01)
-    res = sample(plan, AIS(50), 2000, ntransitions = 100, burnin = 100, progress = false)
+    res = sample(plan, AIS(50), 2000, ntransitions = 100, discard_initial = 5000, progress = false)
     plan = ApproxKernelizedPosterior(prior, cost, 0.01 / sqrt(2))
-    resk = sample(plan, AIS(50), 2000, ntransitions = 100, burnin = 100, progress = false)
+    resk = sample(plan, AIS(50), 2000, ntransitions = 100, discard_initial = 5000, progress = false)
     testst(alg, r) = begin
         m = mean(abs, st(r[:]) - st_n)
         println(":", alg, ": testing m = ", m)
@@ -147,7 +146,7 @@ end
 
 @testset "Usecase of issue #10" begin
     plan = ApproxPosterior(Normal(0, 1), x -> abs(x - 1.5), 0.01)
-    res = sample(plan, AIS(20), 100, burnin = 100, progress = false)
+    res = sample(plan, AIS(20), 100, discard_initial = 2000, progress = false)
     @show res
     @test abs(mean(res) - 1.5) <= 0.01
 end
@@ -161,7 +160,7 @@ end
         MCMCThreads(),
         100,
         4,
-        burnin = 500,
+        discard_initial = 10000,
         ntransitions = 40,
         progress = false,
     )
@@ -174,8 +173,6 @@ end
     @test mean(err) <= 0.02
 end
 
-@test KissABC.boxchain((1, 2, 3)) == (1, 2, 3)
-
 @testset "CommonLogDensity: rosenbrock banana density" begin
     D = CommonLogDensity(
         2,
@@ -184,7 +181,7 @@ end
     )
     @test length(D) == 2
     @test typeof(KissABC.unconditional_sample(Random.GLOBAL_RNG, D)) <: KissABC.Particle
-    res = sample(D, AIS(50), 1000, ntransitions = 100, burnin = 500, progress = false)
+    res = sample(D, AIS(50), 1000, ntransitions = 100, discard_initial = 2000, progress = false)
     @show res
     Clπ = AISChain(D.lπ.([identity.(x) for x in eachrow(res[:, :, 1])]))
     @test quantile(Clπ[:], 0.97) > -0.69
@@ -206,7 +203,7 @@ end
         x -> ifelse(sum(abs2, x) <= 1, 0.0, -Inf),
     )
     D2 = CommonLogDensity(2, rng -> rand(2) .* (2, 1) .- (1, 0), x -> -Inf)
-    res = sample(D, AIS(50), 1000, ntransitions = 100, burnin = 500, progress = false)
+    res = sample(D, AIS(50), 1000, ntransitions = 100, discard_initial = 5000, progress = false)
     @test mean(abs.(mean(res, dims = 1))) < 0.1
     @test_throws ErrorException sample(D2, AIS(50), 10, progress = false)
 end
@@ -223,7 +220,7 @@ end
 
 plan=ApproxPosterior(Factored(Uniform(0,1), Uniform(0.5,1)), cost, 0.01)
 using MCMCChains
-@show res=sample(plan, AIS(100),100,burnin=100)
+@show res=sample(plan, AIS(100),100,discard_initial=100)
 @show Chains(res[10000:end,:,:])
 early stop:
  [0.49006664933267297, 0.49313860531909304, 0.49497013116625105]
