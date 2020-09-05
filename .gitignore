@@ -3,5 +3,5 @@
 *.jl.mem
 /docs/build/
 Manifest.toml
-.pdf
+*.pdf
 
