@@ -1,7 +1,7 @@
 
 function de_propose(
     rng::AbstractRNG,
-    density::AbstractDensity,
+    density,
     particles::AbstractVector,
     i::Int,
 )
@@ -28,7 +28,7 @@ end
 
 function ais_walk_propose(
     rng::AbstractRNG,
-    density::AbstractDensity,
+    density,
     particles::AbstractVector,
     i::Int,
 )
@@ -60,7 +60,7 @@ sample_g(rng::AbstractRNG, a) = cdf_g_inv(rand(rng), a)
 
 function stretch_propose(
     rng::AbstractRNG,
-    density::AbstractDensity,
+    density,
     particles::AbstractVector,
     i::Int,
 )
@@ -75,7 +75,7 @@ end
 
 function propose(
     rng::AbstractRNG,
-    density::AbstractDensity,
+    density,
     particles::AbstractVector,
     i::Int,
 )

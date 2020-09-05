@@ -9,6 +9,7 @@ import Base.length
 include("priors.jl")
 include("types.jl")
 include("transition.jl")
+include("smc.jl")
 
 struct AIS <: AbstractMCMC.AbstractSampler
     nparticles::Int
