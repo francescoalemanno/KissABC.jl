@@ -64,9 +64,18 @@ end
     μ_st = mean(bs_median_st)
     @test abs(μ_st - 43.6) < 1
 
-    P=smc(pri,x -> sum(abs, model(x, 0) .- tinydata),nparticles=5000,verbose=false,alpha=0.99,r_epstol=0,epstol=0.01).P
-    P[1]≈46.2
-    P[2]≈0.866
+    P =
+        smc(
+            pri,
+            x -> sum(abs, model(x, 0) .- tinydata),
+            nparticles = 5000,
+            verbose = false,
+            alpha = 0.99,
+            r_epstol = 0,
+            epstol = 0.01,
+        ).P
+    P[1] ≈ 46.2
+    P[2] ≈ 0.866
 end
 
 @testset "Normal dist -> Dirac Delta inference" begin
@@ -77,7 +86,7 @@ end
     res = sample(abc, AIS(12), 500, discard_initial = 1000, progress = false)
     @show res
     @test abs(mean(sim.(res[:])) - 1.5) <= 0.005
-    @test smc(pri,cost,epstol=0.1).P[1] ≈ 0.707 
+    @test smc(pri, cost, epstol = 0.1).P[1] ≈ 0.707
 end
 
 @testset "Normal dist -> Dirac Delta inference, MCMCThreads" begin
@@ -85,7 +94,15 @@ end
     sim(μ) = μ * μ + 1
     cost(x) = abs(sim(x) - 1.5)
     abc = ApproxKernelizedPosterior(pri, cost, 0.001)
-    res = sample(abc, AIS(12), MCMCThreads(), 100, 50, discard_initial = 50*12, progress = false)
+    res = sample(
+        abc,
+        AIS(12),
+        MCMCThreads(),
+        100,
+        50,
+        discard_initial = 50 * 12,
+        progress = false,
+    )
     @show res
     @test size(res) == (100, 1, 50)
     @test abs(mean(sim.(res[:])) - 1.5) <= 0.005
@@ -100,7 +117,7 @@ end
     @show res
     ress = [(res[i, :, 1]...,) for i in size(res, 1)]
     @test abs(mean(sim.(ress)) - 5.5) < 0.2
-    @test smc(pri,cost).P[2] ≈ 5
+    @test smc(pri, cost).P[2] ≈ 5
 end
 
 function brownianrms((μ, σ), N, samples = 200)
@@ -120,7 +137,7 @@ end
     @test all(
         abs.(((mean(sim[:, 1, 1]), mean(sim[:, 2, 1])) .- params) ./ params,) .< (0.1, 0.1),
     )
-    @test all(smc(prior,cost).P .≈ [0.49, 1.96])
+    @test all(smc(prior, cost).P .≈ [0.49, 1.96])
 end
 
 @testset "Classical Mixture Model 0.1N+N" begin
@@ -138,9 +155,23 @@ end
     sim(μ) = μ + rand((randn() * 0.1, randn()))
     cost(x) = abs(sim(x) - 0.0)
     plan = ApproxPosterior(prior, cost, 0.01)
-    res = sample(plan, AIS(50), 2000, ntransitions = 100, discard_initial = 5000, progress = false)
+    res = sample(
+        plan,
+        AIS(50),
+        2000,
+        ntransitions = 100,
+        discard_initial = 5000,
+        progress = false,
+    )
     plan = ApproxKernelizedPosterior(prior, cost, 0.01 / sqrt(2))
-    resk = sample(plan, AIS(50), 2000, ntransitions = 100, discard_initial = 5000, progress = false)
+    resk = sample(
+        plan,
+        AIS(50),
+        2000,
+        ntransitions = 100,
+        discard_initial = 5000,
+        progress = false,
+    )
     testst(alg, r) = begin
         m = mean(abs, st(r[:]) - st_n)
         println(":", alg, ": testing m = ", m)
@@ -149,7 +180,7 @@ end
     end
     @test testst("Hard threshold", res)
     @test testst("Kernelized threshold", resk)
-    @test smc(prior,cost).P[1] ≈ 0
+    @test smc(prior, cost).P[1] ≈ 0
 end
 
 @testset "Usecase of issue #10" begin
@@ -189,7 +220,14 @@ end
     )
     @test length(D) == 2
     @test typeof(KissABC.unconditional_sample(Random.GLOBAL_RNG, D)) <: KissABC.Particle
-    res = sample(D, AIS(50), 1000, ntransitions = 100, discard_initial = 2000, progress = false)
+    res = sample(
+        D,
+        AIS(50),
+        1000,
+        ntransitions = 100,
+        discard_initial = 2000,
+        progress = false,
+    )
     @show res
     Clπ = AISChain(D.lπ.([identity.(x) for x in eachrow(res[:, :, 1])]))
     @test quantile(Clπ[:], 0.97) > -0.69
@@ -211,18 +249,34 @@ end
         x -> ifelse(sum(abs2, x) <= 1, 0.0, -Inf),
     )
     D2 = CommonLogDensity(2, rng -> rand(2) .* (2, 1) .- (1, 0), x -> -Inf)
-    res = sample(D, AIS(50), 1000, ntransitions = 100, discard_initial = 5000, progress = false)
+    res = sample(
+        D,
+        AIS(50),
+        1000,
+        ntransitions = 100,
+        discard_initial = 5000,
+        progress = false,
+    )
     @test mean(abs.(mean(res, dims = 1))) < 0.1
     @test_throws ErrorException sample(D2, AIS(50), 10, progress = false)
 end
 
 @testset "SMC" begin
-    pp=Factored(Normal(0,5), Normal(0,5))
-    cc((x,y)) = 50*(x+randn()*0.01-y^2)^2+(y-1+randn()*0.01)^2
+    pp = Factored(Normal(0, 5), Normal(0, 5))
+    cc((x, y)) = 50 * (x + randn() * 0.01 - y^2)^2 + (y - 1 + randn() * 0.01)^2
 
-    R=smc(pp,cc,verbose=false,alpha=0.9,nparticles=500,retrys=0,epstol=0.01).P
-    @test R[1]≈1
-    @test R[2]≈1
+    R =
+        smc(
+            pp,
+            cc,
+            verbose = false,
+            alpha = 0.9,
+            nparticles = 500,
+            retrys = 0,
+            epstol = 0.01,
+        ).P
+    @test R[1] ≈ 1
+    @test R[2] ≈ 1
 end
 
 #benchmark

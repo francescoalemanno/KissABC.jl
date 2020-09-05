@@ -2,7 +2,7 @@ using Random, Distributions
 using MonteCarloMeasurements
 
 function ess(w)
-    sum(w)^2/sum(abs2,w)
+    sum(w)^2 / sum(abs2, w)
 end
 
 function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer) #taken from Turing.jl
@@ -12,34 +12,29 @@ function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer) #t
     # deterministic assignment
     residuals = similar(w)
     i = 1
-    @inbounds for j in 1:length(w)
+    @inbounds for j = 1:length(w)
         x = num_particles * w[j]
         floor_x = floor(Int, x)
-        for k in 1:floor_x
+        for k = 1:floor_x
             indices[i] = j
             i += 1
         end
         residuals[j] = x - floor_x
     end
-    
+
     # sampling from residuals
     if i <= num_particles
         residuals ./= sum(residuals)
         rand!(Categorical(residuals), view(indices, i:num_particles))
     end
-    
+
     return indices
 end
 
-function smc_propose(
-    rng::AbstractRNG,
-    density,
-    particles::AbstractVector,
-    i::Int,
-)   
+function smc_propose(rng::AbstractRNG, density, particles::AbstractVector, i::Int)
     a = i
-    bluegreen=isodd(i)
-    while i == a && (isodd(a)==bluegreen)
+    bluegreen = isodd(i)
+    while i == a && (isodd(a) == bluegreen)
         a = rand(rng, eachindex(particles))
     end
     Z = sample_g(rng, 3.0)
@@ -47,102 +42,114 @@ function smc_propose(
     op(+, particles[a], W), (length(density) - 1) * log(Z)
 end
 
-function smc(prior, cost; rng=Random.GLOBAL_RNG, nparticles=1000, M=10 , retrys=0, alpha=0.95, mcmc_tol=0.015, epstol=0.0, r_epstol=1e-3, verbose=false)
-    θs=[op(float,Particle(rand(rng,prior))) for i = 1:nparticles]
-    Xs=[cost(push_p(prior,θs[i].x)) for i = 1:nparticles, m = 1:M]
-    lπs=[logpdf(prior,push_p(prior,θs[i].x)) for i = 1:nparticles]
-    Ws=[1/nparticles for i = 1:nparticles]
-    ϵ=maximum(Xs)
-    Ia=collect(vec(sum(Xs.<=ϵ,dims=2)))
-    ESS=ess(Ws)
-    α=alpha
-    iteration=0
+function smc(
+    prior,
+    cost;
+    rng = Random.GLOBAL_RNG,
+    nparticles = 1000,
+    M = 10,
+    retrys = 0,
+    alpha = 0.95,
+    mcmc_tol = 0.015,
+    epstol = 0.0,
+    r_epstol = 1e-3,
+    verbose = false,
+)
+    θs = [op(float, Particle(rand(rng, prior))) for i = 1:nparticles]
+    Xs = [cost(push_p(prior, θs[i].x)) for i = 1:nparticles, m = 1:M]
+    lπs = [logpdf(prior, push_p(prior, θs[i].x)) for i = 1:nparticles]
+    Ws = [1 / nparticles for i = 1:nparticles]
+    ϵ = maximum(Xs)
+    Ia = collect(vec(sum(Xs .<= ϵ, dims = 2)))
+    ESS = ess(Ws)
+    α = alpha
+    iteration = 0
 
     # Step 1 - adaptive threshold
     @label step1
-    iteration+=1
-    ϵv=ϵ
+    iteration += 1
+    ϵv = ϵ
     let
-        tol=1/(4nparticles)
-        target=α*ESS
-        rϵ=(minimum(Xs),ϵ)
+        tol = 1 / (4nparticles)
+        target = α * ESS
+        rϵ = (minimum(Xs), ϵ)
 
-        p=0.5
-        Δ=0.25
+        p = 0.5
+        Δ = 0.25
         while true
-            ϵn=rϵ[1]*p+rϵ[2]*(1-p)
-            Ian=vec(sum(Xs.<=ϵn,dims=2))
-            Wsn=Ws .* (Ian) ./ (Ia .+ 1e-15)
-            dest=ess(Wsn)
+            ϵn = rϵ[1] * p + rϵ[2] * (1 - p)
+            Ian = vec(sum(Xs .<= ϵn, dims = 2))
+            Wsn = Ws .* (Ian) ./ (Ia .+ 1e-15)
+            dest = ess(Wsn)
             if dest <= target
-                p-=Δ
+                p -= Δ
             else
-                p+=Δ
+                p += Δ
             end
-            Δ/=2
+            Δ /= 2
             if Δ <= tol
-                Ia=collect(Ian)
-                Ws=Wsn./sum(Wsn)
+                Ia = collect(Ian)
+                Ws = Wsn ./ sum(Wsn)
                 ϵ = ϵn
-                ESS=dest
+                ESS = dest
                 verbose && (@show iteration, ϵ, dest, target)
                 break
             end
         end
     end
-    if abs(ϵv-ϵ)<r_epstol*abs(ϵ)
+    if abs(ϵv - ϵ) < r_epstol * abs(ϵ)
         @goto results
     end
 
     # Step 2 - Resampling
-    if ESS <= nparticles*max(0.75,α^2.5)
-        idx = resample_residual(Ws,nparticles)
-        θs=θs[idx]
-        Xs=Xs[idx,:]
-        lπs=lπs[idx]
-        Ia=Ia[idx]
-        Ws.=1/nparticles
-        ESS=nparticles
+    if ESS <= nparticles * max(0.75, α^2.5)
+        idx = resample_residual(Ws, nparticles)
+        θs = θs[idx]
+        Xs = Xs[idx, :]
+        lπs = lπs[idx]
+        Ia = Ia[idx]
+        Ws .= 1 / nparticles
+        ESS = nparticles
     end
-    
+
     # Step 3 - MCMC
-    accepted=0
-    retry_N=1+retrys
+    accepted = 0
+    retry_N = 1 + retrys
     for r = 1:retry_N
-        Threads.@threads for i = 1:nparticles
+        Threads.@threads for i = 1:nparticles #non-ideal parallelism
             Ws[i] == 0 && continue
-            θp , logcorr = smc_propose(rng,prior,θs, i)
-            lπp = logpdf(prior,push_p(prior,θp.x))
+            θp, logcorr = smc_propose(rng, prior, θs, i)
+            lπp = logpdf(prior, push_p(prior, θp.x))
             lπp < 0 && (!isfinite(lπp)) && continue
-            Xp = [cost(push_p(prior,θp.x)) for m = 1:M]
-            Ip = sum(Xp.<=ϵ)
+            Xp = [cost(push_p(prior, θp.x)) for m = 1:M]
+            Ip = sum(Xp .<= ϵ)
             Ip == 0 && continue
-            lM = min(lπp - lπs[i] + log(Ip) - log(Ia[i]) + logcorr,0.0)
+            lM = min(lπp - lπs[i] + log(Ip) - log(Ia[i]) + logcorr, 0.0)
             if log(rand(rng)) < lM
-                θs[i]=θp
-                Xs[i,:] .= Xp
+                θs[i] = θp
+                Xs[i, :] .= Xp
                 Ia[i] = Ip
                 lπs[i] = lπp
-                accepted+=1
+                accepted += 1
             end
         end
 
-        if accepted > mcmc_tol*nparticles
-            if ϵ > epstol 
+        if accepted > mcmc_tol * nparticles
+            if ϵ > epstol
                 @goto step1
             else
                 @goto results
             end
         end
     end
-    
+
     @label results
-    filter=vec((Ws.>0) .& (sum(Xs.<=ϵ,dims=2) .> 0))
-    θs=[push_p(prior,θs[i].x) for i in 1:nparticles][filter]
-    l=length(prior)
-    P=map(x->Particles(x),getindex.(θs,i) for i=1:l)
-    W=Particles(Ws[filter])
-    (;P,W,ϵ)
+    filter = vec((Ws .> 0) .& (sum(Xs .<= ϵ, dims = 2) .> 0))
+    θs = [push_p(prior, θs[i].x) for i = 1:nparticles][filter]
+    l = length(prior)
+    P = map(x -> Particles(x), getindex.(θs, i) for i = 1:l)
+    W = Particles(Ws[filter])
+    (P = P, W = W, ϵ = ϵ)
 end
 
 export smc
