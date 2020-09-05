@@ -113,28 +113,29 @@ function smc(
     end
 
     # Step 3 - MCMC
-    accepted = 0
+    accepted = Threads.Atomic{Int}(0)
     retry_N = 1 + retrys
     for r = 1:retry_N
+        new_p = map(i -> (log(rand(rng)), smc_propose(rng, prior, θs, i)...), 1:nparticles)
         Threads.@threads for i = 1:nparticles #non-ideal parallelism
             Ws[i] == 0 && continue
-            θp, logcorr = smc_propose(rng, prior, θs, i)
+            lprob, θp, logcorr = new_p[i]
             lπp = logpdf(prior, push_p(prior, θp.x))
             lπp < 0 && (!isfinite(lπp)) && continue
             Xp = [cost(push_p(prior, θp.x)) for m = 1:M]
             Ip = sum(Xp .<= ϵ)
             Ip == 0 && continue
             lM = min(lπp - lπs[i] + log(Ip) - log(Ia[i]) + logcorr, 0.0)
-            if log(rand(rng)) < lM
+            if lprob < lM
                 θs[i] = θp
                 Xs[i, :] .= Xp
                 Ia[i] = Ip
                 lπs[i] = lπp
-                accepted += 1
+                Threads.atomic_add!(accepted, 1)
             end
         end
 
-        if accepted > mcmc_tol * nparticles
+        if accepted[] > mcmc_tol * nparticles
             if ϵ > epstol
                 @goto step1
             else
@@ -174,7 +175,7 @@ hist(y,20,weights=Ws)
 
 
 
-
+using Distributions,Random
 
 function makecost(n)
     A=randexp(n)
@@ -186,7 +187,7 @@ function makecost(n)
     end
 end
 costf=makecost(10^6)
-@time R=smc(Factored(Uniform(0,1), Uniform(0.5,1)), costf, nparticles=100, M=1, verbose=true, alpha=0.5,epstol=0.001)
+@time R=smc(Factored(Uniform(0,1), Uniform(0.5,1)), costf, nparticles=150, M=1, verbose=true, alpha=0.5,epstol=0.01)
 
 scatter(R.P[1].particles,R.P[2].particles)
 
