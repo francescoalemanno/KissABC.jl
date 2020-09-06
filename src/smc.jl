@@ -35,19 +35,8 @@ function resample_residual(w::AbstractVector{<:Real}, num_particles::Integer) # 
     return indices
 end
 
-function smc_propose(rng::AbstractRNG, density, particles::AbstractVector, i::Int)
-    a = i
-    bluegreen = isodd(i)
-    while i == a && (isodd(a) == bluegreen)
-        a = rand(rng, eachindex(particles))
-    end
-    Z = sample_g(rng, 2.0)
-    W = op(*, op(-, particles[i], particles[a]), Z)
-    op(+, particles[a], W), (length(density) - 1) * log(Z)
-end
-
 """
-Adaptive SMC from P. Del Moral 2012, with Affine invariant proposal mechanism (EXPERIMENTAL)
+Adaptive SMC from P. Del Moral 2012, with Affine invariant proposal mechanism, faster that `AIS` for `ABC` targets.
 ```julia
 function smc(
     prior::Distribution,
@@ -65,6 +54,19 @@ function smc(
     parallel::Bool = false,
 )
 ```
+
+- `prior`: a Distribution object representing the parameters prior.
+- `cost`: a function that given a prior sample returns the cost for said sample (e.g. a distance between simulated data and target data).
+- `rng`: an AbstractRNG object which is used by SMC for inference (it can be useful to make an inference reproducible).
+- `nparticles`: number of total particles to use for inference.
+- `M`: number of cost evaluations per particle, increasing this can reduce the chance of rejecting good particles. 
+- `alpha` - used for adaptive tolerance, by solving `ESS(n,ϵ(n)) = α ESS(n-1, ϵ(n-1))` for `ϵ(n)` at step `n`.
+- `mcmc_retrys` - if set > 0, whenever the fraction of accepted particles drops below the tolerance `mcmc_tol` the MCMC step is repeated (no more than `mcmc_retrys` times).
+- `mcmc_tol` - stopping condition for SMC, if the fraction of accepted particles drops below `mcmc_tol` the algorithm terminates.
+- `epstol` - stopping condition for SMC, if the adaptive cost threshold drops below `epstol` the algorithm has converged and thus it terminates.
+- `min_r_ess` - whenever the fractional effective sample size drops below `min_r_ess`, a systematic resampling step is performed.
+- `verbose` - if set to `true`, enables verbosity.
+- `parallel` - if set to `true`, threaded parallelism is enabled, keep in mind that the cost function must be Thread-safe in such case.
 
 # Example
 
@@ -102,9 +104,10 @@ function smc(
     mcmc_retrys >= 0 || error("mcmc_retrys must be >= 0.")
     alpha > 0 || error("alpha must be > 0.")
     r_epstol >= 0 || error("r_epstol must be >= 0")
+    Np=length(prior)
     min_nparticles = ceil(
         Int,
-        1.5 * (1 + ifelse(parallel, 1, 0)) * length(prior) / (min(alpha, min_r_ess)),
+        1.5 * (1 + ifelse(parallel, 1, 0)) * Np / (min(alpha, min_r_ess)),
     )
     nparticles >= min_nparticles || error("nparticles must be >= $min_nparticles.")
     θs = [op(float, Particle(rand(rng, prior))) for i = 1:nparticles]
@@ -169,26 +172,37 @@ function smc(
         # Step 3 - MCMC
         accepted = parallel ? Threads.Atomic{Int}(0) : 0
         retry_N = 1 + mcmc_retrys
+
+        widx = (1:nparticles)[Ws .> 0]
+        L = length(widx)
+        cut = L ÷ 2
+        s1 = widx[1:cut]
+        s2 = widx[(cut+1):L]
+
         for r = 1:retry_N
-            new_p = map(1:nparticles) do i
-                Ws[i] <= 0 && return (0, 0, 0)
-                (log(rand(rng)), smc_propose(rng, prior, θs, i)...)
-            end
-            @cthreads parallel for i = 1:nparticles # non-ideal parallelism
-                Ws[i] == 0 && continue
-                lprob, θp, logcorr = new_p[i]
-                lπp = logpdf(prior, push_p(prior, θp.x))
-                lπp < 0 && (!isfinite(lπp)) && continue
-                Xp = [cost(push_p(prior, θp.x)) for m = 1:M]
-                Ip = sum(Xp .<= ϵ)
-                Ip == 0 && continue
-                lM = min(lπp - lπs[i] + log(Ip) - log(Ia[i]) + logcorr, 0.0)
-                if lprob < lM
-                    θs[i] = θp
-                    Xs[i, :] .= Xp
-                    Ia[i] = Ip
-                    lπs[i] = lπp
-                    parallel && (Threads.atomic_add!(accepted, 1); true) || (accepted += 1; true)
+            for (A,B) in ((s1,s2),(s2,s1))
+                new_p = map(A) do i
+                    a = rand(rng,B)
+                    Z = sample_g(rng, 2.0)
+                    W = op(*, op(-, θs[i], θs[a]), Z)
+                    (log(rand(rng)), op(+, θs[a], W), (Np - 1) * log(Z))
+                end
+                @cthreads parallel for ir = eachindex(A) # non-ideal parallelism
+                    i=A[ir]
+                    lprob, θp, logcorr = new_p[ir]
+                    lπp = logpdf(prior, push_p(prior, θp.x))
+                    lπp < 0 && (!isfinite(lπp)) && continue
+                    Xp = [cost(push_p(prior, θp.x)) for m = 1:M]
+                    Ip = sum(Xp .<= ϵ)
+                    Ip == 0 && continue
+                    lM = min(lπp - lπs[i] + log(Ip) - log(Ia[i]) + logcorr, 0.0)
+                    if lprob < lM
+                        θs[i] = θp
+                        Xs[i, :] .= Xp
+                        Ia[i] = Ip
+                        lπs[i] = lπp
+                        parallel && (Threads.atomic_add!(accepted, 1); true) || (accepted += 1; true)
+                    end
                 end
             end
             accepted[] >= mcmc_tol * nparticles && break
@@ -196,7 +210,7 @@ function smc(
         if abs(ϵv - ϵ) < r_epstol * abs(ϵ) ||
            ϵ <= epstol ||
            accepted[] < mcmc_tol * nparticles
-            break
+           break
         end
     end
 
@@ -243,7 +257,7 @@ function costfun((u1, p1); raw=false)
     sqrt(sum(abs2,[std(x)-2.2, median(x)-0.4]./[2.2,0.4]))
 end
 
-@time R=smc(Factored(Uniform(0,1), Uniform(0.5,1)), costfun, nparticles=100, M=1, verbose=true, alpha=0.9,epstol=0.01,parallel=true)
+@time R=smc(Factored(Uniform(0,1), Uniform(0.5,1)), costfun, nparticles=100, M=1, verbose=true, alpha=0.8,epstol=0.01,parallel=true)
 
 using PyPlot
 pygui(true)
