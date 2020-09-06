@@ -1,26 +1,8 @@
 module KissABC
 
 macro reexport(ex) # taken from Reexport.jl
-    isa(ex, Expr) && (ex.head == :module ||
-                      ex.head == :using ||
-                      (ex.head == :toplevel &&
-                       all(e->isa(e, Expr) && e.head == :using, ex.args))) ||
-        error("@reexport: syntax error")
-
-    if ex.head == :module
-        modules = Any[ex.args[2]]
-        ex = Expr(:toplevel, ex, :(using .$(ex.args[2])))
-    elseif ex.head == :using && all(e->isa(e, Symbol), ex.args)
-        modules = Any[ex.args[end]]
-    elseif ex.head == :using && ex.args[1].head == :(:)
-        symbols = [e.args[end] for e in ex.args[1].args[2:end]]
-        return esc(Expr(:toplevel, ex, :(eval(Expr(:export, $symbols...)))))
-    else
-        modules = Any[e.args[end] for e in ex.args]
-    end
-
-    esc(Expr(:toplevel, ex,
-             [:(eval(Expr(:export, names($mod)...))) for mod in modules]...))
+    modules = Any[e.args[end] for e in ex.args]
+    esc(Expr(:toplevel, ex, [:(eval(Expr(:export, names($mod)...))) for mod in modules]...))
 end
 
 import AbstractMCMC
@@ -104,20 +86,20 @@ function AbstractMCMC.bundle_samples(
     ::Any,
     ::Type;
     kwargs...,
-) where T <: Particle
+) where {T<:Particle}
     l = length(samples[1].x)
-    P = map(x -> Particles(x), getindex.(getfield.(samples,:x), i) for i = 1:l)
-    length(P)==1 && return P[1]
+    P = map(x -> Particles(x), getindex.(getfield.(samples, :x), i) for i = 1:l)
+    length(P) == 1 && return P[1]
     return P
 end
 
-function AbstractMCMC.chainsstack(c::Vector{Vector{T}}) where T <: Particles
-    nc=length(c)
-    pl=length(c[1])
-    return [Particles(reduce(vcat, c[n][i].particles for n in 1:nc)) for i in 1:pl]
+function AbstractMCMC.chainsstack(c::Vector{Vector{T}}) where {T<:Particles}
+    nc = length(c)
+    pl = length(c[1])
+    return [Particles(reduce(vcat, c[n][i].particles for n = 1:nc)) for i = 1:pl]
 end
 
-function AbstractMCMC.chainsstack(c::Vector{T}) where T<:Particles
+function AbstractMCMC.chainsstack(c::Vector{T}) where {T<:Particles}
     return Particles(reduce(vcat, c[i].particles for i in eachindex(c)))
 end
 
@@ -190,5 +172,5 @@ output:
 """
 sample
 
-export sample, AIS, AISChain, MCMCThreads, MCMCDistributed
+export sample, AIS, MCMCThreads, MCMCDistributed
 end

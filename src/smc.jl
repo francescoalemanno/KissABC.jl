@@ -1,5 +1,5 @@
 
-macro cthreads(condition::Symbol,loop) #does not work well because of #15276, but seems to work on Julia v0.7
+macro cthreads(condition::Symbol, loop) #does not work well because of #15276, but seems to work on Julia v0.7
     return esc(quote
         if $condition
             Threads.@threads $loop
@@ -60,110 +60,115 @@ function smc(
     mcmc_retrys::Int = 0,
     mcmc_tol = 0.015,
     epstol = 0.0,
-    r_epstol = (1-alpha)/50,
+    r_epstol = (1 - alpha) / 50,
     min_r_ess = 0.55,
     verbose::Bool = false,
     parallel::Bool = false,
-
-) where Tprior <: Distribution
+) where {Tprior<:Distribution}
+    M >= 1 || error("M must be >= 1.")
+    min_r_ess > 0 || error("min_r_ess must be > 0.")
+    mcmc_retrys >= 0 || error("mcmc_retrys must be >= 0.")
+    alpha > 0 || error("alpha must be > 0.")
+    r_epstol >= 0 || error("r_epstol must be >= 0")
+    min_nparticles = ceil(
+        Int,
+        1.5 * (1 + ifelse(parallel, 1, 0)) * length(prior) / (min(alpha, min_r_ess)),
+    )
+    nparticles >= min_nparticles || error("nparticles must be >= $min_nparticles.")
     θs = [op(float, Particle(rand(rng, prior))) for i = 1:nparticles]
-    Xs = parallel ? fetch.([Threads.@spawn cost(push_p(prior, θs[$i].x)) for i = 1:nparticles, m = 1:M]) : [cost(push_p(prior, θs[i].x)) for i = 1:nparticles, m = 1:M]
+    Xs = parallel ?
+        fetch.([
+        Threads.@spawn cost(push_p(prior, θs[$i].x)) for i = 1:nparticles, m = 1:M
+    ]) :
+        [cost(push_p(prior, θs[i].x)) for i = 1:nparticles, m = 1:M]
     lπs = [logpdf(prior, push_p(prior, θs[i].x)) for i = 1:nparticles]
     Ws = [1 / nparticles for i = 1:nparticles]
     ϵ = maximum(Xs)
-    Ia = collect(vec(sum(x->x <= ϵ, Xs, dims = 2)))
+    Ia = collect(vec(sum(x -> x <= ϵ, Xs, dims = 2)))
     ESS = ess(Ws)
     α = alpha
     iteration = 0
-
     # Step 1 - adaptive threshold
-    @label step1
-    iteration += 1
-    ϵv = ϵ
-    let
-        tol = 1 / (4nparticles)
-        target = α * ESS
-        rϵ = (minimum(Xs), ϵ)
-
-        p = 0.5
-        Δ = 0.25
-        while true
-            ϵn = rϵ[1] * p + rϵ[2] * (1 - p)
-            Ian = vec(sum(x->x <= ϵn, Xs, dims = 2))
-            Wsn = Ws .* (Ian) ./ (Ia .+ 1e-15)
-            dest = ess(Wsn)
-            if dest <= target
-                p -= Δ
-            else
-                p += Δ
-            end
-            Δ /= 2
-            if Δ <= tol
-                Ia = collect(Ian)
-                Ws = Wsn ./ sum(Wsn)
-                ϵ = ϵn
-                ESS = dest
-                verbose && (@show iteration, ϵ, dest, target)
-                break
-            end
-        end
-    end
-
-    if abs(ϵv - ϵ) < r_epstol * abs(ϵ)
-        @goto results
-    end
-
-    # Step 2 - Resampling
-    if ESS * α <= nparticles * min_r_ess
-        idx = resample_residual(Ws, nparticles)
-        θs = θs[idx]
-        Xs = Xs[idx, :]
-        lπs = lπs[idx]
-        Ia = Ia[idx]
-        Ws .= 1 / nparticles
-        ESS = nparticles
-    end
-
-    # Step 3 - MCMC
-    accepted = parallel ? Threads.Atomic{Int}(0) : 0
-    retry_N = 1 + mcmc_retrys
-    for r = 1:retry_N
-        new_p = map(1:nparticles) do i
-            Ws[i]<=0 && return (0,0,0)
-            (log(rand(rng)), smc_propose(rng, prior, θs, i)...)
-        end
-        @cthreads parallel for i = 1:nparticles # non-ideal parallelism
-            Ws[i] == 0 && continue
-            lprob, θp, logcorr = new_p[i]
-            lπp = logpdf(prior, push_p(prior, θp.x))
-            lπp < 0 && (!isfinite(lπp)) && continue
-            Xp = [cost(push_p(prior, θp.x)) for m = 1:M]
-            Ip = sum(Xp .<= ϵ)
-            Ip == 0 && continue
-            lM = min(lπp - lπs[i] + log(Ip) - log(Ia[i]) + logcorr, 0.0)
-            if lprob < lM
-                θs[i] = θp
-                Xs[i, :] .= Xp
-                Ia[i] = Ip
-                lπs[i] = lπp
-                if parallel 
-                    Threads.atomic_add!(accepted, 1)
-                else  
-                    accepted+=1
+    while true
+        iteration += 1
+        ϵv = ϵ
+        let
+            tol = 1 / (4nparticles)
+            target = α * ESS
+            rϵ = (minimum(Xs), ϵ)
+            p = 0.5
+            Δ = 0.25
+            while true
+                ϵn = rϵ[1] * p + rϵ[2] * (1 - p)
+                Ian = vec(sum(x -> x <= ϵn, Xs, dims = 2))
+                Wsn = Ws .* (Ian) ./ (Ia .+ 1e-15)
+                dest = ess(Wsn)
+                if dest <= target
+                    p -= Δ
+                else
+                    p += Δ
+                end
+                Δ /= 2
+                if Δ <= tol
+                    Ia = collect(Ian)
+                    Ws = Wsn ./ sum(Wsn)
+                    ϵ = ϵn
+                    ESS = dest
+                    verbose && (@show iteration, ϵ, dest, target)
+                    break
                 end
             end
         end
 
-        if accepted[] > mcmc_tol * nparticles
-            if ϵ > epstol
-                @goto step1
-            else
-                @goto results
+        # Step 2 - Resampling
+        if ESS * α <= nparticles * min_r_ess
+            idx = resample_residual(Ws, nparticles)
+            θs = θs[idx]
+            Xs = Xs[idx, :]
+            lπs = lπs[idx]
+            Ia = Ia[idx]
+            Ws .= 1 / nparticles
+            ESS = nparticles
+        end
+
+        # Step 3 - MCMC
+        accepted = parallel ? Threads.Atomic{Int}(0) : 0
+        retry_N = 1 + mcmc_retrys
+        for r = 1:retry_N
+            new_p = map(1:nparticles) do i
+                Ws[i] <= 0 && return (0, 0, 0)
+                (log(rand(rng)), smc_propose(rng, prior, θs, i)...)
             end
+            @cthreads parallel for i = 1:nparticles # non-ideal parallelism
+                Ws[i] == 0 && continue
+                lprob, θp, logcorr = new_p[i]
+                lπp = logpdf(prior, push_p(prior, θp.x))
+                lπp < 0 && (!isfinite(lπp)) && continue
+                Xp = [cost(push_p(prior, θp.x)) for m = 1:M]
+                Ip = sum(Xp .<= ϵ)
+                Ip == 0 && continue
+                lM = min(lπp - lπs[i] + log(Ip) - log(Ia[i]) + logcorr, 0.0)
+                if lprob < lM
+                    θs[i] = θp
+                    Xs[i, :] .= Xp
+                    Ia[i] = Ip
+                    lπs[i] = lπp
+                    if parallel
+                        Threads.atomic_add!(accepted, 1)
+                    else
+                        accepted += 1
+                    end
+                end
+            end
+            accepted[] >= mcmc_tol * nparticles && break
+        end
+        if abs(ϵv - ϵ) < r_epstol * abs(ϵ) ||
+           ϵ <= epstol ||
+           accepted[] < mcmc_tol * nparticles
+            break
         end
     end
 
-    @label results
     filter = vec((Ws .> 0) .& (sum(Xs .<= ϵ, dims = 2) .> 0))
     θs = [push_p(prior, θs[i].x) for i = 1:nparticles][filter]
 
@@ -180,7 +185,7 @@ using KissABC
 pp=Factored(Normal(0,5), Normal(0,5))
 cc((x,y)) = 50*(x+randn()*0.01-y^2)^2+(y-1+randn()*0.01)^2
 
-R=smc(pp,cc,verbose=true,alpha=0.95,nparticles=500,mcmc_retrys=0).P
+R=smc(pp,cc,verbose=true,alpha=0.5,nparticles=5000).P
 using PyPlot
 pygui(true)
 sP=Particles(sigmapoints(mean(R),cov(R)))
@@ -196,7 +201,7 @@ hist(y,20,weights=Ws)
 
 
 
-using Distributions, Random, KissABC
+using Random, KissABC
 
 function costfun((u1, p1); raw=false)
     n=10^6
@@ -207,7 +212,7 @@ function costfun((u1, p1); raw=false)
     sqrt(sum(abs2,[std(x)-2.2, median(x)-0.4]./[2.2,0.4]))
 end
 
-@time R=smc(Factored(Uniform(0,1), Uniform(0.5,1)), costfun, nparticles=100, M=1, verbose=true, alpha=0.3,epstol=0.01,parallel=true)
+@time R=smc(Factored(Uniform(0,1), Uniform(0.5,1)), costfun, nparticles=100, M=1, verbose=true, alpha=0.9,epstol=0.01,parallel=true)
 
 using PyPlot
 pygui(true)

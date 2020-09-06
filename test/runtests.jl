@@ -59,14 +59,17 @@ end
     @test results_st[1] ≈ 46.2
     @test results_st[2] ≈ 0.866
 
-    P = smc(pri,
+    P =
+        smc(
+            pri,
             x -> sum(abs, model(x, 0) .- tinydata),
             nparticles = 5000,
             verbose = false,
             alpha = 0.99,
             r_epstol = 0,
-            epstol = 0.01).P
-    
+            epstol = 0.01,
+        ).P
+
     @test P[1] ≈ 46.2
     @test P[2] ≈ 0.866
 end
@@ -159,7 +162,7 @@ end
         discard_initial = 5000,
         progress = false,
     )
-    ressmc=smc(prior, cost, nparticles=2000,alpha=0.99,epstol=0.01).P[1]
+    ressmc = smc(prior, cost, nparticles = 2000, alpha = 0.99, epstol = 0.01).P[1]
     testst(alg, r) = begin
         m = mean(abs, st(r) - st_n)
         println(":", alg, ": testing m = ", m)
@@ -179,7 +182,8 @@ end
 end
 
 @testset "MVNormal vector test + 4 MCMCThreads" begin
-    plan = ApproxPosterior(MultivariateNormal(4, 1.0), x -> abs(sum(abs2, x)^0.5 - 1.5), 0.01)
+    plan =
+        ApproxPosterior(MultivariateNormal(4, 1.0), x -> abs(sum(abs2, x)^0.5 - 1.5), 0.01)
     res = sample(
         plan,
         AIS(20),
@@ -210,7 +214,7 @@ end
         progress = false,
     )
     @show res
-    @test quantile(D.lπ(res),0.97) > -0.69
+    @test quantile(D.lπ(res), 0.97) > -0.69
 end
 
 
@@ -237,12 +241,7 @@ end
     pp = Factored(Normal(0, 5), Normal(0, 5))
     cc((x, y)) = 50 * (x + randn() * 0.01 - y^2)^2 + (y - 1 + randn() * 0.01)^2
 
-    R = smc(pp,
-            cc,
-            verbose = false,
-            alpha = 0.9,
-            nparticles = 500,
-            epstol = 0.01).P
+    R = smc(pp, cc, verbose = false, alpha = 0.9, nparticles = 500, epstol = 0.01, parallel=true).P
 
     @test R[1] ≈ 1
     @test R[2] ≈ 1
