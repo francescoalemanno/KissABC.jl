@@ -242,6 +242,12 @@ end
     cc((x, y)) = 50 * (x + randn() * 0.01 - y^2)^2 + (y - 1 + randn() * 0.01)^2
 
     R = smc(pp, cc, verbose = false, alpha = 0.9, nparticles = 500, epstol = 0.01, parallel=true).P
+    @test R[1] ≈ 1
+    @test R[2] ≈ 1
+
+    cc2((x, y)) = rand((50 * (x + randn() * 0.01 - y^2)^2 + (y - 1 + randn() * 0.01)^2,Inf))
+
+    R = smc(pp, cc2, verbose = false, alpha = 0.9, nparticles = 1000, epstol = 0.01, parallel=true).P
 
     @test R[1] ≈ 1
     @test R[2] ≈ 1

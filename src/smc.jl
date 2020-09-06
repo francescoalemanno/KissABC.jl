@@ -77,10 +77,13 @@ function smc(
         Threads.@spawn cost(push_p(prior, θs[$i].x)) for i = 1:nparticles, m = 1:M
     ]) :
         [cost(push_p(prior, θs[i].x)) for i = 1:nparticles, m = 1:M]
+
     lπs = [logpdf(prior, push_p(prior, θs[i].x)) for i = 1:nparticles]
-    Ws = [1 / nparticles for i = 1:nparticles]
-    ϵ = maximum(Xs)
-    Ia = collect(vec(sum(x -> x <= ϵ, Xs, dims = 2)))
+    good = -Inf .< Xs .< Inf
+    ϵ = maximum(Xs[good])
+    Ws = collect(vec(sum(good, dims = 2)))
+    Ws = Ws ./ sum(Ws)
+    Ia = collect(vec(sum(x -> (x <= ϵ) && (-Inf<x<Inf), Xs, dims = 2)))
     ESS = ess(Ws)
     α = alpha
     iteration = 0
