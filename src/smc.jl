@@ -1,11 +1,7 @@
 
 macro cthreads(condition::Symbol, loop) #does not work well because of #15276, but seems to work on Julia v0.7
     return esc(quote
-        if $condition
-            Threads.@threads $loop
-        else
-            $loop
-        end
+        ($condition) && (Threads.@threads $loop; true) || ($loop; true)
     end)
 end
 
@@ -153,11 +149,7 @@ function smc(
                     Xs[i, :] .= Xp
                     Ia[i] = Ip
                     lπs[i] = lπp
-                    if parallel
-                        Threads.atomic_add!(accepted, 1)
-                    else
-                        accepted += 1
-                    end
+                    parallel && (Threads.atomic_add!(accepted, 1); true) || (accepted += 1; true)
                 end
             end
             accepted[] >= mcmc_tol * nparticles && break
