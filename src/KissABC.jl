@@ -1,10 +1,35 @@
 module KissABC
 
+macro reexport(ex) # taken from Reexport.jl
+    isa(ex, Expr) && (ex.head == :module ||
+                      ex.head == :using ||
+                      (ex.head == :toplevel &&
+                       all(e->isa(e, Expr) && e.head == :using, ex.args))) ||
+        error("@reexport: syntax error")
+
+    if ex.head == :module
+        modules = Any[ex.args[2]]
+        ex = Expr(:toplevel, ex, :(using .$(ex.args[2])))
+    elseif ex.head == :using && all(e->isa(e, Symbol), ex.args)
+        modules = Any[ex.args[end]]
+    elseif ex.head == :using && ex.args[1].head == :(:)
+        symbols = [e.args[end] for e in ex.args[1].args[2:end]]
+        return esc(Expr(:toplevel, ex, :(eval(Expr(:export, $symbols...)))))
+    else
+        modules = Any[e.args[end] for e in ex.args]
+    end
+
+    esc(Expr(:toplevel, ex,
+             [:(eval(Expr(:export, names($mod)...))) for mod in modules]...))
+end
+
 import AbstractMCMC
 import AbstractMCMC: sample, step, MCMCThreads, MCMCDistributed
-using Distributions
 using Random
 import Base.length
+
+@reexport using MonteCarloMeasurements
+@reexport using Distributions
 
 include("priors.jl")
 include("types.jl")
@@ -24,68 +49,6 @@ struct AISState{S,L}
     i::Int
     AISState(s::S, l::L, i = 1) where {S,L} = new{S,L}(s, l, i)
 end
-"""
-    AISChain(chains::NTuple{N,Vector})
-    AISChain(chain::Vector) = AISChain((chain,))
-
-this type is useful for gathering the results of `sample`,
-
-# Example
-
-```julia
-genchain() = [ (rand((1,2,3)), randn()) for i in 1:100] # simple useless generator of chains
-C=AISChain((genchain(),genchain(),genchain(),genchain())) # 4 chains
-```
-
-output:
-
-```
-Object of type AISChain (total samples 400)
-number of samples: 100
-number of parameters: 2
-number of chains: 4
-┌─────────┬────────────────────┬─────────────────────┬────────────────────┬────────────────────┬───────────────────┐
-│         │               2.5% │               25.0% │              50.0% │              75.0% │             97.5% │
-├─────────┼────────────────────┼─────────────────────┼────────────────────┼────────────────────┼───────────────────┤
-│ Param 1 │                1.0 │                 1.0 │                2.0 │                3.0 │               3.0 │
-│ Param 2 │ -1.830019623768731 │ -0.5840379394249825 │ 0.1015397387884777 │ 0.7357170602574647 │ 1.752198316412034 │
-└─────────┴────────────────────┴─────────────────────┴────────────────────┴────────────────────┴───────────────────┘
-```
-
-individual samples can be accessed in an 3d-array like fashion:
-
-```julia
-C[1:90, 1, 1:2] # we are taking from the samples `1:90` of the chains `1:2`, only the parameter `1`
-```
-
-output:
-
-```
-90×2 Array{Real,2}:
- 2  1
- 2  2
- 2  3
- 1  2
- 1  1
- ⋮
- 2  3
- 1  3
- 3  3
- 2  2
-```
-"""
-struct AISChain{T<:Union{Tuple,Vector}} <: AbstractArray{Real,3}
-    samples::T
-    AISChain(s::T) where {T} = new{T}(s)
-end
-include("printing.jl")
-import Base: size, getindex, IndexStyle
-size(x::AISChain{<:Vector}) = (length(x.samples), length(x.samples[1]), 1)
-size(x::AISChain{<:Tuple}) =
-    (length(x.samples[1]), length(x.samples[1][1]), length(x.samples))
-@inline IndexStyle(::AISChain) = IndexCartesian()
-getindex(x::AISChain{<:Tuple}, i::Int, j::Int, k::Int) = x.samples[k][i][j]
-getindex(x::AISChain{<:Vector}, i::Int, j::Int, k::Int) = x.samples[i][j]
 
 function AbstractMCMC.step(
     rng::Random.AbstractRNG,
@@ -135,18 +98,27 @@ function AbstractMCMC.step(
 end
 
 function AbstractMCMC.bundle_samples(
-    samples::Vector{<:Particle},
+    samples::Vector{T},
     ::AbstractMCMC.AbstractModel,
     ::AIS,
     ::Any,
     ::Type;
     kwargs...,
-)
-    return AISChain([samples[i].x for i in eachindex(samples)])
+) where T <: Particle
+    l = length(samples[1].x)
+    P = map(x -> Particles(x), getindex.(getfield.(samples,:x), i) for i = 1:l)
+    length(P)==1 && return P[1]
+    return P
 end
 
-function AbstractMCMC.chainsstack(c::AbstractVector{<:AISChain})
-    return AISChain(Tuple(map(x -> x.samples, c)))
+function AbstractMCMC.chainsstack(c::Vector{Vector{T}}) where T <: Particles
+    nc=length(c)
+    pl=length(c[1])
+    return [Particles(reduce(vcat, c[n][i].particles for n in 1:nc)) for i in 1:pl]
+end
+
+function AbstractMCMC.chainsstack(c::Vector{T}) where T<:Particles
+    return Particles(reduce(vcat, c[i].particles for i in eachindex(c)))
 end
 
 """
@@ -156,7 +128,7 @@ end
 
 # Generalities
 
-This function will run an Affine Invariant MCMC sampler, and will return an `AISChain` object with all the parameter samples,
+This function will run an Affine Invariant MCMC sampler, and will return an `Particles` object for each parameter,
 the mandatory parameters are:
 
 `model`: a subtype of `AbstractDensity`, look at `ApproxPosterior`, `ApproxKernelizedPosterior`, `CommonLogDensity`.
@@ -194,21 +166,13 @@ println(res)
 
 output:
 ```
-number of samples: 1000
-number of parameters: 2
-number of chains: 1
-┌─────────┬───────────────────────┬─────────────────────┬────────────────────┬───────────────────┬────────────────────┐
-│         │                  2.5% │               25.0% │              50.0% │             75.0% │              97.5% │
-├─────────┼───────────────────────┼─────────────────────┼────────────────────┼───────────────────┼────────────────────┤
-│ Param 1 │ -0.025648264131516257 │  0.3219940894353638 │ 0.9721286048546971 │ 2.041743999647929 │ 5.6520319210700825 │
-│ Param 2 │   -0.7226487177325958 │ 0.48611230863899335 │ 0.9604278578610763 │ 1.418519267388806 │  2.385312701114671 │
-└─────────┴───────────────────────┴─────────────────────┴────────────────────┴───────────────────┴────────────────────┘
+Particles{Float64,1000}[1.43 ± 1.4, 0.99 ± 0.67]
 ```
 
 # Minimal Example for `ApproxKernelizedPosterior` (`ApproxPosterior`)
 
 ```julia
-using KissABC, Distributions
+using KissABC
 prior = Uniform(-10, 10) # prior distribution for parameter
 sim(μ) = μ + rand((randn() * 0.1, randn())) # simulator function
 cost(x) = abs(sim(x) - 0.0) # cost function to compare simulations to target data, in this case simply '0'
@@ -220,15 +184,7 @@ println(res)
 
 output:
 ```
-Object of type AISChain (total samples 2000)
-number of samples: 2000
-number of parameters: 1
-number of chains: 1
-┌─────────┬─────────────────────┬─────────────────────┬──────────────────────┬─────────────────────┬────────────────────┐
-│         │                2.5% │               25.0% │                50.0% │               75.0% │              97.5% │
-├─────────┼─────────────────────┼─────────────────────┼──────────────────────┼─────────────────────┼────────────────────┤
-│ Param 1 │ -1.8692526364678272 │ -0.1390312701192662 │ 0.023740627510271367 │ 0.20440332127121577 │ 1.1844931848164661 │
-└─────────┴─────────────────────┴─────────────────────┴──────────────────────┴─────────────────────┴────────────────────┘
+0.0 ± 0.46
 ```
 
 """

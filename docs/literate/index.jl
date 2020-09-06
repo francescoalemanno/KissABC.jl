@@ -49,8 +49,8 @@ res = sample(
 prsample = [rand(prior) for i = 1:2000] #some samples from the prior for comparison
 μ_pr = getindex.(prsample, 1) # μ samples from the prior
 σ_pr = getindex.(prsample, 2) # σ samples from the prior
-μ_p = res[:, 1, 1] # μ samples from the posterior
-σ_p = res[:, 2, 1]; # σ samples from the posterior
+μ_p = res[1].particles # μ samples from the posterior
+σ_p = res[2].particles; # σ samples from the posterior
 
 # and plotting prior and posterior side by side we get:
 

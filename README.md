@@ -28,7 +28,6 @@ sim((μ,σ)) = randn(1000) .* σ .+ μ
 ```
 The second ingredient is a prior over the parameters μ and σ
 ```julia
-using Distributions
 using KissABC
 prior=Factored(Uniform(1,3), Truncated(Normal(0,0.1), 0, 100))
 ```
@@ -53,17 +52,10 @@ res = sample(approx_density,AIS(10),1000,ntransitions=100)
 the repl output is:
 
 ```TTY
-Sampling 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| Time: 0:00:00
-Object of type AISChain (total samples 1000)
-number of samples: 1000
-number of parameters: 2
-number of chains: 1
-┌─────────┬─────────────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────────────────────┐
-│         │                2.5% │               25.0% │               50.0% │               75.0% │                97.5% │
-├─────────┼─────────────────────┼─────────────────────┼─────────────────────┼─────────────────────┼──────────────────────┤
-│ Param 1 │  1.9889104510710525 │  1.9958478705688778 │   1.999126578901652 │   2.002886778724749 │   2.0095096952698044 │
-│ Param 2 │ 0.03864543664435372 │ 0.03979188808422054 │ 0.04040515336501156 │ 0.04103079769548673 │ 0.042449787918102805 │
-└─────────┴─────────────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────────────────────┘
+Sampling 100%|██████████████████████████████████████████████████| Time: 0:00:02
+2-element Array{Particles{Float64,1000},1}:
+ 2.0 ± 0.018
+ 0.0395 ± 0.00093
 ```
 
 We chose a tolerance on distances equal to `0.005`, a number of particles equal to `10`, we chose a number of steps per sample `ntransitions = 100` and we acquired `1000` samples.

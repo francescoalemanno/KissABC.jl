@@ -1,5 +1,4 @@
 using KissABC
-using Distributions
 using AbstractMCMC
 using Statistics
 using Test
@@ -57,25 +56,19 @@ end
     nparticles = 5000
     modelabc = ApproxPosterior(pri, x -> sum(abs, model(x, 0) .- tinydata), 0.1)
     results_st = sample(modelabc, AIS(500), 5000, ntransitions = 100, progress = false)
-    @show results_st
-    @test IndexStyle(results_st) == IndexCartesian()
-    chain = results_st[:, 1, 1]
-    bs_median_st = [median(rand(chain, nparticles)) for i = 1:500]
-    μ_st = mean(bs_median_st)
-    @test abs(μ_st - 43.6) < 1
+    @test results_st[1] ≈ 46.2
+    @test results_st[2] ≈ 0.866
 
-    P =
-        smc(
-            pri,
+    P = smc(pri,
             x -> sum(abs, model(x, 0) .- tinydata),
             nparticles = 5000,
             verbose = false,
             alpha = 0.99,
             r_epstol = 0,
-            epstol = 0.01,
-        ).P
-    P[1] ≈ 46.2
-    P[2] ≈ 0.866
+            epstol = 0.01).P
+    
+    @test P[1] ≈ 46.2
+    @test P[2] ≈ 0.866
 end
 
 @testset "Normal dist -> Dirac Delta inference" begin
@@ -84,8 +77,8 @@ end
     cost(x) = abs(sim(x) - 1.5)
     abc = ApproxKernelizedPosterior(pri, cost, 0.001)
     res = sample(abc, AIS(12), 500, discard_initial = 1000, progress = false)
-    @show res
-    @test abs(mean(sim.(res[:])) - 1.5) <= 0.005
+
+    @test sim(res) ≈ 1.5
     @test smc(pri, cost, epstol = 0.1).P[1] ≈ 0.707
 end
 
@@ -103,9 +96,8 @@ end
         discard_initial = 50 * 12,
         progress = false,
     )
-    @show res
-    @test size(res) == (100, 1, 50)
-    @test abs(mean(sim.(res[:])) - 1.5) <= 0.005
+    @show sim(res)
+    @test sim(res) ≈ 1.5
 end
 
 @testset "Normal dist + Uniform Distr inference" begin
@@ -114,9 +106,7 @@ end
     cost(x) = abs(sim(x) - 5.5)
     model_abc = ApproxPosterior(pri, cost, 0.01)
     res = sample(model_abc, AIS(100), 1000, discard_initial = 10000, progress = false)
-    @show res
-    ress = [(res[i, :, 1]...,) for i in size(res, 1)]
-    @test abs(mean(sim.(ress)) - 5.5) < 0.2
+    @test sim(Tuple(res)) ≈ 5.5
     @test smc(pri, cost).P[2] ≈ 5
 end
 
@@ -133,11 +123,8 @@ end
     cost(x) = sum(abs, brownianrms(x, 30) .- tdata) / length(tdata)
     modelabc = ApproxPosterior(prior, cost, 0.1)
     sim = sample(modelabc, AIS(50), 100, discard_initial = 50000, progress = false)
-    @show sim
-    @test all(
-        abs.(((mean(sim[:, 1, 1]), mean(sim[:, 2, 1])) .- params) ./ params,) .< (0.1, 0.1),
-    )
-    @test all(smc(prior, cost).P .≈ [0.49, 1.96])
+    @test all(sim .≈ params)
+    @test all(smc(prior, cost).P .≈ params)
 end
 
 @testset "Classical Mixture Model 0.1N+N" begin
@@ -172,27 +159,27 @@ end
         discard_initial = 5000,
         progress = false,
     )
+    ressmc=smc(prior, cost, nparticles=2000,alpha=0.99,epstol=0.01).P[1]
     testst(alg, r) = begin
-        m = mean(abs, st(r[:]) - st_n)
+        m = mean(abs, st(r) - st_n)
         println(":", alg, ": testing m = ", m)
         @show r
         m < 0.1
     end
     @test testst("Hard threshold", res)
     @test testst("Kernelized threshold", resk)
-    @test smc(prior, cost).P[1] ≈ 0
+    @test testst("SMC", ressmc)
 end
 
 @testset "Usecase of issue #10" begin
     plan = ApproxPosterior(Normal(0, 1), x -> abs(x - 1.5), 0.01)
     res = sample(plan, AIS(20), 100, discard_initial = 2000, progress = false)
     @show res
-    @test abs(mean(res) - 1.5) <= 0.01
+    @test res ≈ 1.5
 end
 
 @testset "MVNormal vector test + 4 MCMCThreads" begin
-    plan =
-        ApproxPosterior(MultivariateNormal(4, 1.0), x -> abs(sum(abs2, x)^0.5 - 1.5), 0.01)
+    plan = ApproxPosterior(MultivariateNormal(4, 1.0), x -> abs(sum(abs2, x)^0.5 - 1.5), 0.01)
     res = sample(
         plan,
         AIS(20),
@@ -203,13 +190,7 @@ end
         ntransitions = 40,
         progress = false,
     )
-    err = AISChain(ntuple(j -> [plan.cost(res[i, :, j]) for i = 1:size(res, 1)], 4))
-    show(stdout, MIME("text/plain"), err)
-    io = IOBuffer()
-    show(io, MIME("text/plain"), err)
-    show(io, err)
-    @test String(take!(io))[1] == 'O'
-    @test mean(err) <= 0.02
+    @test mean(plan.cost(res)) < 0.01
 end
 
 @testset "CommonLogDensity: rosenbrock banana density" begin
@@ -229,16 +210,7 @@ end
         progress = false,
     )
     @show res
-    Clπ = AISChain(D.lπ.([identity.(x) for x in eachrow(res[:, :, 1])]))
-    @test quantile(Clπ[:], 0.97) > -0.69
-    #=
-    using PyPlot
-    pygui(true)
-    scatter(res[:,1,1],res[:,2,1],alpha=0.2)
-    scatter(1,1)
-    nothing
-    nothing
-    =#
+    @test quantile(D.lπ(res),0.97) > -0.69
 end
 
 
@@ -257,7 +229,7 @@ end
         discard_initial = 5000,
         progress = false,
     )
-    @test mean(abs.(mean(res, dims = 1))) < 0.1
+    @test D.lπ(res) == 0
     @test_throws ErrorException sample(D2, AIS(50), 10, progress = false)
 end
 
@@ -265,16 +237,13 @@ end
     pp = Factored(Normal(0, 5), Normal(0, 5))
     cc((x, y)) = 50 * (x + randn() * 0.01 - y^2)^2 + (y - 1 + randn() * 0.01)^2
 
-    R =
-        smc(
-            pp,
+    R = smc(pp,
             cc,
             verbose = false,
             alpha = 0.9,
             nparticles = 500,
-            retrys = 0,
-            epstol = 0.01,
-        ).P
+            epstol = 0.01).P
+
     @test R[1] ≈ 1
     @test R[2] ≈ 1
 end
@@ -377,7 +346,7 @@ end
 cost(rand(problem.prior))
 approx_density = ApproxPosterior(problem.prior,cost,0.01)
 
-mcmc(approx_density,nparticles=100,generations=5000,parallel=true)
+mcmc(approx_density, nparticles=100, generations=5000, parallel=true)
 
 problem.target
 =#
