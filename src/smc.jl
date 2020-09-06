@@ -230,7 +230,7 @@ using KissABC
 pp=Factored(Normal(0,5), Normal(0,5))
 cc((x,y)) = 50*(x+randn()*0.01-y^2)^2+(y-1+randn()*0.01)^2
 
-R=smc(pp,cc,verbose=true,alpha=0.5,nparticles=5000).P
+R=smc(pp,cc,verbose=true,alpha=0.95,nparticles=500).P
 using PyPlot
 pygui(true)
 sP=Particles(sigmapoints(mean(R),cov(R)))
@@ -257,13 +257,13 @@ function costfun((u1, p1); raw=false)
     sqrt(sum(abs2,[std(x)-2.2, median(x)-0.4]./[2.2,0.4]))
 end
 
-@time R=smc(Factored(Uniform(0,1), Uniform(0.5,1)), costfun, nparticles=100, M=1, verbose=true, alpha=0.8,epstol=0.01,parallel=true)
+@time R=smc(Factored(Uniform(0,1), Uniform(0.5,1)), costfun, nparticles=100, M=1, verbose=true, alpha=0.6,epstol=0.01,parallel=true)
 
 using PyPlot
 pygui(true)
 scatter(R.P[1].particles,R.P[2].particles)
 
 
-cov(R.P)
+Particles(sigmapoints(mean(R.P),cov(R.P)))
 
 =#

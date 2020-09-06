@@ -5,23 +5,22 @@ using Distributions
 
 function model(P, N)
     μ_1, μ_2, σ_1, σ_2, prob = P
-    d1 = randn(N) .* σ_1 .+ μ_1
-    d2 = randn(N) .* σ_2 .+ μ_2
-    ps = rand(N) .< prob
-    R = zeros(N)
-    R[ps] .= d1[ps]
-    R[.!ps] .= d2[.!ps]
-    R
+    r1 = Particles(N, Normal(0,1))
+    r2 = Particles(N, Uniform(0,1))
+    d1 = r1 * σ_1 + μ_1
+    d2 = r1 * σ_2 + μ_2
+    ps = (1 + sign(r2 - prob))/2
+    (d1+ps*(d2-d1)).particles
 end
 
 # Let's use the model to generate some data, this data will constitute our dataset
 parameters = (1.0, 0.0, 0.2, 2.0, 0.4)
-data = model(parameters, 5000)
+data = model(parameters, 2000)
 
 # let's look at the data
 
 using Plots
-histogram(data)
+histogram(data,bins=100)
 savefig("ex1_hist1.svg");
 nothing; # hide
 
@@ -50,19 +49,24 @@ summ_model(P, N) = S(model(P, N));
 
 # now we need a distance function to compare the summary statistics of target data and simulated data
 summ_data = S(data)
-D(P, N = 5000) = sqrt(mean(abs2, summ_data .- summ_model(P, N)));
+D(P, N = 2000) = sqrt(mean(abs2, summ_data .- summ_model(P, N)));
 
 # We can use `AIS` which is an Affine Invariant MC algorithm via the `sample` function, to get the posterior distribution of our parameters given the dataset `data`
-approx_density = ApproxPosterior(prior, D, 0.1)
-res = sample(
+approx_density = ApproxPosterior(prior, D, 0.032)
+@time res = sample(
     approx_density,
     AIS(50),
     MCMCThreads(),
-    1000,
+    100,
     4,
-    discard_initial = 3000,
+    discard_initial = 6000,
     ntransitions = 10,
     progress = false,
 )
-@show res
-# the nominal values of the parameters lie inside the CI.
+@show res, bymap(D,res)
+
+# In this case, it is best to apply SMC, as it leads to tighter CI's and lower computational costs
+@time res= smc(prior, D, verbose=false, parallel=true, nparticles=300, alpha=0.9)
+@show res.P, bymap(D, res.P)
+
+# the nominal values of the parameters lie inside the CI for both methods

@@ -264,9 +264,9 @@ function cost((u1, p1); n=10^6, raw=false)
 end
 
 plan=ApproxPosterior(Factored(Uniform(0,1), Uniform(0.5,1)), cost, 0.01)
-using MCMCChains
-@show res=sample(plan, AIS(100),100,discard_initial=100)
-@show Chains(res[10000:end,:,:])
+
+@show res=sample(plan, AIS(100),100,discard_initial=10000)
+
 early stop:
  [0.49006664933267297, 0.49313860531909304, 0.49497013116625105]
  [0.8804136291097875, 0.8819843728641816, 0.8834306754737902]

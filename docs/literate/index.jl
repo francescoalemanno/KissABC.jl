@@ -32,16 +32,23 @@ end
 
 # Now we are all set, we can use `AIS` which is an Affine Invariant MC algorithm via the `sample` function, to simulate the posterior distribution for this model, inferring μ and σ
 cost(x) = dist(tdata, sim(x))
-approx_density = ApproxPosterior(prior, cost, 0.1)
+approx_density = ApproxPosterior(prior, cost, 0.01)
 res = sample(
     approx_density,
     AIS(50),
-    2000,
+    500,
     discard_initial = 1000,
     ntransitions = 10,
-    progress = false,
+    progress = true,
 )
+
 @show res
+
+# You can also use Sequential Monte Carlo (SMC) to infer posterior parameters (which is slower for this very simple problem, but MUCH faster for harder problems):
+
+ressmc = smc(prior, cost, nparticles=2000, verbose=true, alpha=0.3, parallel=true, epstol=0.01)
+
+@show ressmc
 
 # the parameters we chose are: a tolerance on distances equal to `0.1`, a number of samples equal to `2000`, the simulated posterior results are in `res`.
 # We can now extract the inference results:

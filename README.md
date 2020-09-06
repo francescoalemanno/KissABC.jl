@@ -1,4 +1,4 @@
-# KissABC
+# KissABC 3.0
 
 ![CI](https://github.com/JuliaApproxInference/KissABC.jl/workflows/CI/badge.svg?branch=master)
 [![Coverage](http://codecov.io/github/JuliaApproxInference/KissABC.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaApproxInference/KissABC.jl)
@@ -9,6 +9,11 @@ Table of Contents
 =================
 
   * [Beginners Usage Guide](#usage-guide)
+
+### Release Notes
+
+* 3.0: Added SMC algorithm callable with `smc` for efficient Approximate bayesian computation, the speedup is 20X for reaching the same epsilon tolerance. Removed `AISChain` return type in favour of `MonteCarloMeasurements` particle, this change allows immediate use of the inference results for further processing. 
+
 
 ## Usage guide
 
@@ -68,3 +73,12 @@ plotting prior and posterior side by side we get:
 ![plots of the Inference Results](images/inf_normaldist.png "Inference Results")
 
 we can see that the algorithm has correctly inferred both parameters, this exact recipe will work for much more complicated models and simulations, with some tuning.
+
+to this same problem we can perhaps even more easily apply `smc`, a more advanced adaptive sequential monte carlo method
+
+```TTY
+julia> smc(prior,cost)
+(P = Particles{Float64,79}[2.0 ± 0.0062, 0.0401 ± 0.00081], W = 0.0127, ϵ = 0.011113205245491245)
+```
+
+to know how to tune the configuration defaults of `smc`, consult the docs :)
