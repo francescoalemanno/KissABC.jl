@@ -46,6 +46,42 @@ function smc_propose(rng::AbstractRNG, density, particles::AbstractVector, i::In
     op(+, particles[a], W), (length(density) - 1) * log(Z)
 end
 
+"""
+Adaptive SMC from P. Del Moral 2012, with Affine invariant proposal mechanism (EXPERIMENTAL)
+```julia
+function smc(
+    prior::Distribution,
+    cost::Function;
+    rng::AbstractRNG = Random.GLOBAL_RNG,
+    nparticles::Int = 100,
+    M::Int = 1,
+    alpha = 0.95,
+    mcmc_retrys::Int = 0,
+    mcmc_tol = 0.015,
+    epstol = 0.0,
+    r_epstol = (1 - alpha) / 50,
+    min_r_ess = 0.55,
+    verbose::Bool = false,
+    parallel::Bool = false,
+)
+```
+
+# Example
+
+```Julia
+using KissABC
+prior=Factored(Normal(0,5), Normal(0,5))
+cost((x,y)) = 50*(x+randn()*0.01-y^2)^2+(y-1+randn()*0.01)^2
+results = smc(prior, cost, alpha=0.5, nparticles=5000).P
+```
+
+output:
+```TTY
+2-element Array{Particles{Float64,5000},1}:
+ 1.0 ± 0.029
+ 0.999 ± 0.012
+```
+"""
 function smc(
     prior::Tprior,
     cost;
