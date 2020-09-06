@@ -80,7 +80,15 @@ end
     sim(μ) = μ * μ + 1
     cost(x) = abs(sim(x) - 1.5)
     abc = ApproxKernelizedPosterior(pri, cost, 0.001)
-    res = sample(abc, AIS(12), MCMCThreads(), 100, 50, discard_initial = 50*12, progress = false)
+    res = sample(
+        abc,
+        AIS(12),
+        MCMCThreads(),
+        100,
+        50,
+        discard_initial = 50 * 12,
+        progress = false,
+    )
     @show res
     @test size(res) == (100, 1, 50)
     @test abs(mean(sim.(res[:])) - 1.5) <= 0.005
@@ -131,9 +139,23 @@ end
     sim(μ) = μ + rand((randn() * 0.1, randn()))
     cost(x) = abs(sim(x) - 0.0)
     plan = ApproxPosterior(prior, cost, 0.01)
-    res = sample(plan, AIS(50), 2000, ntransitions = 100, discard_initial = 5000, progress = false)
+    res = sample(
+        plan,
+        AIS(50),
+        2000,
+        ntransitions = 100,
+        discard_initial = 5000,
+        progress = false,
+    )
     plan = ApproxKernelizedPosterior(prior, cost, 0.01 / sqrt(2))
-    resk = sample(plan, AIS(50), 2000, ntransitions = 100, discard_initial = 5000, progress = false)
+    resk = sample(
+        plan,
+        AIS(50),
+        2000,
+        ntransitions = 100,
+        discard_initial = 5000,
+        progress = false,
+    )
     testst(alg, r) = begin
         m = mean(abs, st(r[:]) - st_n)
         println(":", alg, ": testing m = ", m)
@@ -181,7 +203,14 @@ end
     )
     @test length(D) == 2
     @test typeof(KissABC.unconditional_sample(Random.GLOBAL_RNG, D)) <: KissABC.Particle
-    res = sample(D, AIS(50), 1000, ntransitions = 100, discard_initial = 2000, progress = false)
+    res = sample(
+        D,
+        AIS(50),
+        1000,
+        ntransitions = 100,
+        discard_initial = 2000,
+        progress = false,
+    )
     @show res
     Clπ = AISChain(D.lπ.([identity.(x) for x in eachrow(res[:, :, 1])]))
     @test quantile(Clπ[:], 0.97) > -0.69
@@ -203,7 +232,14 @@ end
         x -> ifelse(sum(abs2, x) <= 1, 0.0, -Inf),
     )
     D2 = CommonLogDensity(2, rng -> rand(2) .* (2, 1) .- (1, 0), x -> -Inf)
-    res = sample(D, AIS(50), 1000, ntransitions = 100, discard_initial = 5000, progress = false)
+    res = sample(
+        D,
+        AIS(50),
+        1000,
+        ntransitions = 100,
+        discard_initial = 5000,
+        progress = false,
+    )
     @test mean(abs.(mean(res, dims = 1))) < 0.1
     @test_throws ErrorException sample(D2, AIS(50), 10, progress = false)
 end

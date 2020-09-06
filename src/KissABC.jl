@@ -145,7 +145,7 @@ function AbstractMCMC.bundle_samples(
 end
 
 function AbstractMCMC.chainsstack(c::AbstractVector{<:AISChain})
-    return AISChain(Tuple(map(x->x.samples,c)))
+    return AISChain(Tuple(map(x -> x.samples, c)))
 end
 
 """
