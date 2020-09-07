@@ -18,15 +18,6 @@ end
 parameters = (1.0, 0.0, 0.2, 2.0, 0.4)
 data = model(parameters, 200)
 
-# let's look at the data
-
-using Plots
-histogram(data,bins=100)
-savefig("ex1_hist1.svg");
-nothing; # hide
-
-# ![ex1_hist1](ex1_hist1.svg)
-
 # we can now try to infer all parameters using `KissABC`, first of all we need to define a reasonable prior for our model
 
 prior = Factored(
@@ -67,4 +58,3 @@ approx_density = ApproxPosterior(prior, D, 0.032)
 # In this case, it is best to apply SMC, as it leads to tighter CI's and lower computational costs
 @time res = smc(prior, D, verbose=false, nparticles=100, alpha=0.95)
 @show res.P
-

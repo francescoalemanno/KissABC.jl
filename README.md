@@ -82,3 +82,4 @@ julia> smc(prior,cost)
 ```
 
 to know how to tune the configuration defaults of `smc`, consult the docs :)
+for more example look at the `examples` folder.
