@@ -1,10 +1,5 @@
 
-function de_propose(
-    rng::AbstractRNG,
-    density::AbstractDensity,
-    particles::AbstractVector,
-    i::Int,
-)
+function de_propose(rng::AbstractRNG, density, particles::AbstractVector, i::Int)
     γ = 2.38 / sqrt(2 * length(density)) * exp(randn(rng) * 0.1)
     a = b = i
     while a ∈ (i,)
@@ -26,12 +21,7 @@ function de_propose(
     op(+, particles[i], W, T), 0.0
 end
 
-function ais_walk_propose(
-    rng::AbstractRNG,
-    density::AbstractDensity,
-    particles::AbstractVector,
-    i::Int,
-)
+function ais_walk_propose(rng::AbstractRNG, density, particles::AbstractVector, i::Int)
     a = b = c = i
     while a ∈ (i,)
         a = rand(rng, eachindex(particles))
@@ -58,12 +48,7 @@ cdf_g_inv(u, a) = (u * (sqrt(a) - sqrt(1 / a)) + sqrt(1 / a))^2
 "Sample from g using inverse transform sampling.  a=2.0 is recommended."
 sample_g(rng::AbstractRNG, a) = cdf_g_inv(rand(rng), a)
 
-function stretch_propose(
-    rng::AbstractRNG,
-    density::AbstractDensity,
-    particles::AbstractVector,
-    i::Int,
-)
+function stretch_propose(rng::AbstractRNG, density, particles::AbstractVector, i::Int)
     a = i
     while i == a
         a = rand(rng, eachindex(particles))
@@ -73,12 +58,7 @@ function stretch_propose(
     op(+, particles[a], W), (length(density) - 1) * log(Z)
 end
 
-function propose(
-    rng::AbstractRNG,
-    density::AbstractDensity,
-    particles::AbstractVector,
-    i::Int,
-)
+function propose(rng::AbstractRNG, density, particles::AbstractVector, i::Int)
     p = rand(rng, (1, 1, 1, 1, 2, 2, 3))
     pr = (stretch_propose, de_propose, ais_walk_propose)
     pr[p](rng, density, particles, i)

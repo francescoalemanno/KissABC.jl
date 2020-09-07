@@ -16,7 +16,6 @@ sim((μ, σ)) = randn(1000) .* σ .+ μ;
 
 # The second ingredient is a prior over the parameters μ and σ
 
-using Distributions
 using KissABC
 prior = Factored(Uniform(1, 3), Truncated(Normal(0, 0.1), 0, 100));
 
@@ -32,10 +31,23 @@ end
 
 # Now we are all set, we can use `AIS` which is an Affine Invariant MC algorithm via the `sample` function, to simulate the posterior distribution for this model, inferring μ and σ
 cost(x) = dist(tdata, sim(x))
-approx_density = ApproxPosterior(prior, cost, 0.1)
-res =
-    sample(approx_density, AIS(50), 2000, discard_initial = 1000, ntransitions = 10, progress = false)
+approx_density = ApproxPosterior(prior, cost, 0.01)
+res = sample(
+    approx_density,
+    AIS(50),
+    500,
+    discard_initial = 1000,
+    ntransitions = 10,
+    progress = true,
+)
+
 @show res
+
+# You can also use Sequential Monte Carlo (SMC) to infer posterior parameters:
+
+ressmc = smc(prior, cost, nparticles=500, epstol=0.01)
+
+@show ressmc
 
 # the parameters we chose are: a tolerance on distances equal to `0.1`, a number of samples equal to `2000`, the simulated posterior results are in `res`.
 # We can now extract the inference results:
@@ -43,8 +55,8 @@ res =
 prsample = [rand(prior) for i = 1:2000] #some samples from the prior for comparison
 μ_pr = getindex.(prsample, 1) # μ samples from the prior
 σ_pr = getindex.(prsample, 2) # σ samples from the prior
-μ_p = res[:, 1, 1] # μ samples from the posterior
-σ_p = res[:, 2, 1]; # σ samples from the posterior
+μ_p = res[1].particles # μ samples from the posterior
+σ_p = res[2].particles; # σ samples from the posterior
 
 # and plotting prior and posterior side by side we get:
 
