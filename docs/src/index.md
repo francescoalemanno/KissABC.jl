@@ -2,7 +2,7 @@
 CurrentModule = KissABC
 ```
 
-# KissABC
+# KissABC 3.0
 
 ```@index
 ```

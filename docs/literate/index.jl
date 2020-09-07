@@ -45,9 +45,9 @@ res = sample(
 
 # You can also use Sequential Monte Carlo (SMC) to infer posterior parameters:
 
-ressmc = smc(prior, cost, nparticles=500, epstol=0.01)
+#ressmc = smc(prior, cost, nparticles=500, epstol=0.01)
 
-@show ressmc
+#@show ressmc
 
 # the parameters we chose are: a tolerance on distances equal to `0.1`, a number of samples equal to `2000`, the simulated posterior results are in `res`.
 # We can now extract the inference results:

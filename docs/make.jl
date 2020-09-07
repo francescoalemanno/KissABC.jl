@@ -1,20 +1,20 @@
 using KissABC
 using Documenter
-using Literate
-using Plots
-ENV["GKSwstype"] = "100"
-@show joinpath(@__DIR__, "src")
+#using Literate
+#using Plots
+#ENV["GKSwstype"] = "100"
+#@show joinpath(@__DIR__, "src")
 #=Literate.markdown(
     joinpath(@__DIR__, "literate", "example_1.jl"),
     joinpath(@__DIR__, "src"),
     documenter = true,
 )=#
-Literate.markdown(
+#=Literate.markdown(
     joinpath(@__DIR__, "literate", "index.jl"),
     joinpath(@__DIR__, "src"),
     documenter = true,
 )
-@info "Literate finished."
+@info "Literate finished."=#
 makedocs(;
     modules = [KissABC],
     authors = "Francesco Alemanno <francescoalemanno710@gmail.com> and contributors",
@@ -26,9 +26,9 @@ makedocs(;
         assets = String[],
     ),
     pages = [
-        "Basic Usage" => "index.md",
+        "Home" => "index.md",
 #        "Example: Gaussian Mixture" => "example_1.md",
-        "Reference" => "reference.md",
+        #"Reference" => "reference.md",
     ],
 )
 
