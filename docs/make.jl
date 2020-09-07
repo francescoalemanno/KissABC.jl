@@ -4,11 +4,11 @@ using Literate
 using Plots
 ENV["GKSwstype"] = "100"
 @show joinpath(@__DIR__, "src")
-Literate.markdown(
+#=Literate.markdown(
     joinpath(@__DIR__, "literate", "example_1.jl"),
     joinpath(@__DIR__, "src"),
     documenter = true,
-)
+)=#
 Literate.markdown(
     joinpath(@__DIR__, "literate", "index.jl"),
     joinpath(@__DIR__, "src"),
@@ -27,7 +27,7 @@ makedocs(;
     ),
     pages = [
         "Basic Usage" => "index.md",
-        "Example: Gaussian Mixture" => "example_1.md",
+#        "Example: Gaussian Mixture" => "example_1.md",
         "Reference" => "reference.md",
     ],
 )
