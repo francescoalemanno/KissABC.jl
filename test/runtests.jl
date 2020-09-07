@@ -82,7 +82,7 @@ end
     res = sample(abc, AIS(12), 500, discard_initial = 1000, progress = false)
 
     @test sim(res) ≈ 1.5
-    @test smc(pri, cost, epstol = 0.1).P[1] ≈ 0.707
+    @test smc(pri, cost, epstol = 0.1).P ≈ 0.707
 end
 
 @testset "Normal dist -> Dirac Delta inference, MCMCThreads" begin
@@ -162,7 +162,7 @@ end
         discard_initial = 5000,
         progress = false,
     )
-    ressmc = smc(prior, cost, nparticles = 2000, alpha = 0.99, epstol = 0.01).P[1]
+    ressmc = smc(prior, cost, nparticles = 2000, alpha = 0.99, epstol = 0.01).P
     testst(alg, r) = begin
         m = mean(abs, st(r) - st_n)
         println(":", alg, ": testing m = ", m)
