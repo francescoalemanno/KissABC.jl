@@ -14,7 +14,7 @@ Literate.markdown(
     joinpath(@__DIR__, "src"),
     documenter = true,
 )
-
+@info "Literate finished."
 makedocs(;
     modules = [KissABC],
     authors = "Francesco Alemanno <francescoalemanno710@gmail.com> and contributors",

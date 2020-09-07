@@ -16,7 +16,6 @@ sim((μ, σ)) = randn(1000) .* σ .+ μ;
 
 # The second ingredient is a prior over the parameters μ and σ
 
-using Distributions
 using KissABC
 prior = Factored(Uniform(1, 3), Truncated(Normal(0, 0.1), 0, 100));
 

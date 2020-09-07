@@ -1,16 +1,17 @@
 # # A gaussian mixture model
 # First of all we define our model,
 using KissABC
-using Distributions
 
 function model(P, N)
     μ_1, μ_2, σ_1, σ_2, prob = P
-    r1 = Particles(N, Normal(0,1))
-    r2 = Particles(N, Uniform(0,1))
-    d1 = r1 * σ_1 + μ_1
-    d2 = r1 * σ_2 + μ_2
-    ps = (1 + sign(r2 - prob))/2
-    (d1+ps*(d2-d1)).particles
+    r1 = randn(N)
+    r2 = rand(N)
+
+    d1 = @. r1 * σ_1 + μ_1
+    d2 = @. r1 * σ_2 + μ_2
+    ps = @. (1 + sign(r2 - prob))/2
+    @. (d1+ps*(d2-d1))
+
 end
 
 # Let's use the model to generate some data, this data will constitute our dataset
@@ -69,4 +70,3 @@ approx_density = ApproxPosterior(prior, D, 0.032)
 @time res= smc(prior, D, verbose=false, parallel=true, nparticles=100, alpha=0.95, epstol=0.032)
 @show res.P
 
-# the nominal values of the parameters lie inside the CI for both methods
