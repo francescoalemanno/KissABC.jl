@@ -110,7 +110,7 @@ end
 
 # Generalities
 
-This function will run an Affine Invariant MCMC sampler, and will return an `Particles` object for each parameter,
+This function will run an Affine Invariant MCMC sampler, and will return a `Particles` object for each parameter,
 the mandatory parameters are:
 
 `model`: a subtype of `AbstractDensity`, look at `ApproxPosterior`, `ApproxKernelizedPosterior`, `CommonLogDensity`.
