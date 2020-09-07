@@ -45,7 +45,7 @@ res = sample(
 
 # You can also use Sequential Monte Carlo (SMC) to infer posterior parameters:
 
-ressmc = smc(prior, cost, nparticles=500, parallel=true, epstol=0.01)
+ressmc = smc(prior, cost, nparticles=500, epstol=0.01)
 
 @show ressmc
 
