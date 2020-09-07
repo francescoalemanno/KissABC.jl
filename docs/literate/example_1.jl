@@ -59,14 +59,14 @@ approx_density = ApproxPosterior(prior, D, 0.032)
     MCMCThreads(),
     100,
     4,
-    discard_initial = 6000,
+    discard_initial = 3000,
     ntransitions = 10,
     progress = false,
 )
-@show res, bymap(D,res)
+@show res
 
 # In this case, it is best to apply SMC, as it leads to tighter CI's and lower computational costs
-@time res= smc(prior, D, verbose=false, parallel=true, nparticles=300, alpha=0.9)
-@show res.P, bymap(D, res.P)
+@time res= smc(prior, D, verbose=false, parallel=true, nparticles=100, alpha=0.95, epstol=0.032)
+@show res.P
 
 # the nominal values of the parameters lie inside the CI for both methods
