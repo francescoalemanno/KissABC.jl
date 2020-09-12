@@ -127,7 +127,7 @@ end
     modelabc = ApproxPosterior(prior, cost, 0.1)
     sim = sample(modelabc, AIS(50), 100, discard_initial = 50000, progress = false)
     @test all(sim .≈ params)
-    @test all(smc(prior, cost).P .≈ params)
+    @test all(smc(prior, cost, verbose=false,min_r_ess=0.55).P .≈ params)
 end
 
 @testset "Classical Mixture Model 0.1N+N" begin

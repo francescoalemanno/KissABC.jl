@@ -131,6 +131,13 @@ function smc(
     α = alpha
     iteration = 0
     # Step 1 - adaptive threshold
+
+    function th_fun(ep, xv, we, iv)
+        Ian = vec(sum(x -> x <= ep, xv, dims = 2))
+        Wsn = we .* (Ian) ./ (iv .+ 1e-15)
+        dest = ess(Wsn)
+        Ian, Wsn, dest
+    end
     while true
         iteration += 1
         ϵv = ϵ
@@ -138,32 +145,21 @@ function smc(
             tol = 1 / (4nparticles)
             target = α * ESS
             rϵ = (minimum(Xs), ϵ)
-            p = 0.5
-            Δ = 0.25
-            while true
-                ϵn = rϵ[1] * p + rϵ[2] * (1 - p)
-                Ian = vec(sum(x -> x <= ϵn, Xs, dims = 2))
-                Wsn = Ws .* (Ian) ./ (Ia .+ 1e-15)
-                dest = ess(Wsn)
-                if dest <= target
-                    p -= Δ
-                else
-                    p += Δ
-                end
-                Δ /= 2
-                if Δ <= tol
-                    Ia = collect(Ian)
-                    Ws = Wsn ./ sum(Wsn)
-                    ϵ = ϵn
-                    ESS = dest
-                    verbose && (@show iteration, ϵ, dest, target)
-                    break
-                end
+            fa = th_fun(rϵ[1], Xs, Ws, Ia)[3]
+            fb = th_fun(rϵ[2], Xs, Ws, Ia)[3]
+            for reps = 1:7
+                ϵm = (rϵ[1]+rϵ[2])/2
+                fm = th_fun(ϵm, Xs,Ws, Ia)[3]
+                (fm-target)*(fb-target) <= 0 && (rϵ=(ϵm,rϵ[2]);continue)
+                (fm-target)*(fa-target) <= 0 && (rϵ=(rϵ[1],ϵm);)
             end
+            ϵ = (rϵ[1]+rϵ[2])/2
+            Ia, Ws, ESS = th_fun(ϵ, Xs,Ws, Ia)
+            verbose && (@show iteration, ϵ, target, ESS)
         end
 
         # Step 2 - Resampling
-        if ESS * α <= nparticles * min_r_ess
+        if ESS <= nparticles * min_r_ess
             idx = resample_residual(Ws, nparticles)
             θs = θs[idx]
             Xs = Xs[idx, :]
