@@ -94,8 +94,8 @@ function smc(
     mcmc_retrys::Int = 0,
     mcmc_tol = 0.015,
     epstol = 0.0,
-    r_epstol = (1 - alpha) / 50,
-    min_r_ess = 0.55,
+    r_epstol = (1 - alpha)^1.5 / 50,
+    min_r_ess = alpha^2,
     max_stretch = 2.0,
     verbose::Bool = false,
     parallel::Bool = false,
@@ -105,10 +105,12 @@ function smc(
     mcmc_retrys >= 0 || error("mcmc_retrys must be >= 0.")
     alpha > 0 || error("alpha must be > 0.")
     r_epstol >= 0 || error("r_epstol must be >= 0")
+    mcmc_tol >= 0 || error("mcmc_tol must be >= 0")
+    max_stretch > 1 || error("max_stretch must be > 1")
     Np=length(prior)
     min_nparticles = ceil(
         Int,
-        1.5 * (1 + ifelse(parallel, 1, 0)) * Np / (min(alpha, min_r_ess)),
+        3 * Np / (min(alpha, min_r_ess)),
     )
     nparticles >= min_nparticles || error("nparticles must be >= $min_nparticles.")
     θs = [op(float, Particle(rand(rng, prior))) for i = 1:nparticles]
@@ -209,7 +211,7 @@ function smc(
             end
             accepted[] >= mcmc_tol * nparticles && break
         end
-        if abs(ϵv - ϵ) < r_epstol * abs(ϵ) ||
+        if 2*abs(ϵv - ϵ) < r_epstol * (abs(ϵv)+abs(ϵ)) ||
            ϵ <= epstol ||
            accepted[] < mcmc_tol * nparticles
            break
@@ -267,7 +269,7 @@ function costfun((u1, p1); raw=false)
     sqrt(sum(abs2,[std(x)-2.2, median(x)-0.4]./[2.2,0.4]))
 end
 
-@time R=smc(Factored(Uniform(0,1), Uniform(0.5,1)), costfun, nparticles=100, M=1, verbose=true,epstol=0.01,alpha=0.55,parallel=true)
+@time R=smc(Factored(Uniform(0,1), Uniform(0.5,1)), costfun, nparticles=100, M=1, verbose=true,epstol=0.003,alpha=0.55,mcmc_tol=0,r_epstol=0,parallel=true)
 
 plan=ApproxPosterior(Factored(Uniform(0,1), Uniform(0.5,1)), costfun, 0.01)
 
