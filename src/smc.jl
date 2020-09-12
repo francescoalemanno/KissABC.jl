@@ -270,7 +270,7 @@ function costfun((u1, p1); raw=false)
     sqrt(sum(abs2,[std(x)-2.2, median(x)-0.4]./[2.2,0.4]))
 end
 
-@time R=smc(Factored(Uniform(0,1), Uniform(0.5,1)), costfun, nparticles=100,alpha=0.5, verbose=true, parallel=true)
+@time R=smc(Factored(Uniform(0,1), Uniform(0.5,1)), costfun, nparticles=100,alpha=0.75, verbose=true, parallel=true)
 
 plan=ApproxPosterior(Factored(Uniform(0,1), Uniform(0.5,1)), costfun, 0.01)
 
