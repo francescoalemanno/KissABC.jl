@@ -1,6 +1,10 @@
 macro cthreads(condition::Symbol, loop) #does not work well because of #15276, but seems to work on Julia v0.7
     return esc(quote
-        ($condition) && (Threads.@threads $loop; true) || ($loop; true)
+        if $condition 
+            Threads.@threads $loop
+        else
+            $loop
+        end
     end)
 end
 
@@ -159,7 +163,7 @@ function smc(
         end
 
         # Step 2 - Resampling
-        if ESS <= nparticles * min_r_ess
+        if α*ESS <= nparticles * min_r_ess
             idx = resample_residual(Ws, nparticles)
             θs = θs[idx]
             Xs = Xs[idx, :]
@@ -173,24 +177,18 @@ function smc(
         accepted = parallel ? Threads.Atomic{Int}(0) : 0
         retry_N = 1 + mcmc_retrys
 
-        widx = (1:nparticles)[Ws .> 0]
-        L = length(widx)
-        cut = L ÷ 2
-        s1 = widx[1:cut]
-        s2 = widx[(cut+1):L]
-
         for r = 1:retry_N
-            for (A,B) in ((s1,s2),(s2,s1))
-                new_p = map(A) do i
-                    a = rand(rng,B)
-                    u = rand(rng)
-                    Z = (u * (sqrt(max_stretch) - sqrt(1 / max_stretch)) + sqrt(1 / max_stretch))^2
-                    W = op(*, op(-, θs[i], θs[a]), Z)
-                    (log(rand(rng)), op(+, θs[a], W), (Np - 1) * log(Z))
+                new_p = map(1:nparticles) do i
+                    a = b = i
+                    Ws[i] <= 0 && return (nothing,nothing,nothing)
+                    while a==i; a = rand(rng,1:nparticles); end
+                    while b==i || b==a; b = rand(rng,1:nparticles); end
+                    W = op(*, op(-, θs[b], θs[a]), max_stretch*randn(rng)/sqrt(Np))
+                    (log(rand(rng)), op(+, θs[i], W), 0.0)
                 end
-                @cthreads parallel for ir = eachindex(A) # non-ideal parallelism
-                    i=A[ir]
-                    lprob, θp, logcorr = new_p[ir]
+                @cthreads parallel for i = 1:nparticles # non-ideal parallelism
+                    lprob, θp, logcorr = new_p[i]
+                    isnothing(lprob) && continue
                     lπp = logpdf(prior, push_p(prior, θp.x))
                     lπp < 0 && (!isfinite(lπp)) && continue
                     Xp = [cost(push_p(prior, θp.x)) for m = 1:M]
@@ -202,10 +200,13 @@ function smc(
                         Xs[i, :] .= Xp
                         Ia[i] = Ip
                         lπs[i] = lπp
-                        parallel && (Threads.atomic_add!(accepted, 1); true) || (accepted += 1; true)
+                        if parallel 
+                            Threads.atomic_add!(accepted, 1)
+                        else
+                            accepted += 1
+                        end
                     end
                 end
-            end
             accepted[] >= mcmc_tol * nparticles && break
         end
         if 2*abs(ϵv - ϵ) < r_epstol * (abs(ϵv)+abs(ϵ)) ||
@@ -229,7 +230,16 @@ export smc
 
 #=
 using KissABC
+
+prior = Uniform(-10, 10)
+sim(μ) = μ + rand((randn() * 0.1, randn()))
+cost(x) = abs(sim(x) - 0.0)
+R=smc(prior,cost,verbose=true,nparticles=10000,alpha=0.9,M=100).P
+hist(R.particles,80,density=true)
+
+
 pp=Normal(0,5)
+
 cc(x) = 50*(x+randn()*0.01-1)^2
 
 R=smc(pp,cc,verbose=true,alpha=0.95,nparticles=500).P
@@ -280,3 +290,61 @@ scatter(R.P[1].particles,R.P[2].particles)
 Particles(sigmapoints(mean(R.P),cov(R.P)))
 
 =#
+
+
+
+function smc2(prior, cost, N; rng=Random.GLOBAL_RNG, q=0.7, mcmc_tol = 0.1, max_iters = 100, proposal_width=0.5)
+    lowN=2*length(prior)
+    if N*q<=lowN
+        N=lowN+1
+    end
+    sample=[op(float, Particle(rand(rng, prior))) for i = 1:N]
+    logπ = [logpdf(prior, push_p(prior,sample[i].x)) for i = 1:N]
+    C = [cost(sample[i].x) for i = 1:N]
+    for i in 1:max_iters
+        ϵ = quantile(C,q)
+        filter_bad=C .>= ϵ
+        idxok=(1:N)[.!filter_bad]
+        idxbad=(1:N)[filter_bad]
+        nreps=0
+        for i in idxbad
+            @label repeat
+            b=rand(rng,idxok)
+            c=rand(rng,idxok)
+            d=rand(rng,idxok)
+            while c==b
+                c=rand(rng,idxok)
+            end
+            while d==b || d==c
+                d=rand(rng,idxok)
+            end
+            p=op(+,sample[b],op(*,op(-,sample[d],sample[c]), proposal_width))
+            nreps+=1
+
+            ll = logpdf(prior, push_p(prior,p.x))
+            if log(rand(rng)) > min(0.0,ll-logπ[i])
+                @goto repeat
+            end
+            Cp=cost(p.x)
+            if Cp > ϵ
+                @goto repeat
+            end
+            C[i] = Cp
+            sample[i] = p
+            logπ[i] = ll
+        end
+        @show i, ϵ, nreps
+        nreps*mcmc_tol>length(idxbad) && break
+        
+    end
+    getfield.(sample,:x),C
+
+    θs = [push_p(prior, sample[i].x) for i = 1:N]
+    l = length(prior)
+    P = map(x -> Particles(x), getindex.(θs, i) for i = 1:l)
+    length(P)==1 && (P=first(P))
+    (P=P,C=Particles(C))
+end
+
+
+export smc2
