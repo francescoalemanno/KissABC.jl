@@ -150,12 +150,12 @@ function smc(
             for reps = 1:7
                 ϵm = (rϵ[1]+rϵ[2])/2
                 fm = th_fun(ϵm, Xs,Ws, Ia)[3]
-                (fm-target)*(fb-target) <= 0 && (rϵ=(ϵm,rϵ[2]);continue)
+                (fm-target)*(fb-target) <= 0 && (rϵ=(ϵm,rϵ[2]);)
                 (fm-target)*(fa-target) <= 0 && (rϵ=(rϵ[1],ϵm);)
             end
             ϵ = (rϵ[1]+rϵ[2])/2
             Ia, Ws, ESS = th_fun(ϵ, Xs,Ws, Ia)
-            verbose && (@show iteration, ϵ, target, ESS)
+            verbose && (@show iteration, ϵ, round(target-ESS))
         end
 
         # Step 2 - Resampling
