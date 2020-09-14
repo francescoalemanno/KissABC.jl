@@ -162,7 +162,7 @@ end
         discard_initial = 5000,
         progress = false,
     )
-    ressmc = smc(prior, cost, nparticles = 2000, alpha = 0.99, epstol = 0.01).P
+    ressmc = smc(prior, cost, nparticles = 2000, alpha = 0.9, epstol = 0.01,mcmc_retrys=500,mcmc_tol=0.9,verbose=false).P
     testst(alg, r) = begin
         m = mean(abs, st(r) - st_n)
         println(":", alg, ": testing m = ", m)

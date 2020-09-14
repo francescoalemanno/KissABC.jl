@@ -148,16 +148,17 @@ function smc(
         let
             tol = 1 / (4nparticles)
             target = α * ESS
-            rϵ = (minimum(Xs), ϵ)
-            fa = th_fun(rϵ[1], Xs, Ws, Ia)[3]
-            fb = th_fun(rϵ[2], Xs, Ws, Ia)[3]
-            for reps = 1:7
-                ϵm = (rϵ[1]+rϵ[2])/2
+            re = (minimum(Xs), ϵ)
+            ϵm=(re[1]+re[2])/2
+            Δϵ=abs(re[1]-re[2])/4
+            for reps = 1:ceil(Int,(log(nparticles*10)/log(2)))
                 fm = th_fun(ϵm, Xs,Ws, Ia)[3]
-                (fm-target)*(fb-target) <= 0 && (rϵ=(ϵm,rϵ[2]);)
-                (fm-target)*(fa-target) <= 0 && (rϵ=(rϵ[1],ϵm);)
+                round(fm-target) == 0.0 && break
+                fm < target && (ϵm += Δϵ) 
+                fm > target && (ϵm -= Δϵ)
+                Δϵ /= 2 
             end
-            ϵ = (rϵ[1]+rϵ[2])/2
+            ϵ = ϵm
             Ia, Ws, ESS = th_fun(ϵ, Xs,Ws, Ia)
             verbose && (@show iteration, ϵ, round(target-ESS))
         end
@@ -293,58 +294,72 @@ Particles(sigmapoints(mean(R.P),cov(R.P)))
 
 
 
-function smc2(prior, cost, N; rng=Random.GLOBAL_RNG, q=0.7, mcmc_tol = 0.1, max_iters = 100, proposal_width=0.5)
-    lowN=2*length(prior)
+function pfilter(prior, cost, N; rng=Random.GLOBAL_RNG, q=0.7, eff_tol = 0.1, epstol=-Inf, max_iters = Inf, proposal_width=0.75, verbose=false, parallel=false)
+    lowN=4*length(prior)
     if N*q<=lowN
-        N=lowN+1
+        N=ceil(Int,(lowN+1)/q)
     end
     sample=[op(float, Particle(rand(rng, prior))) for i = 1:N]
     logπ = [logpdf(prior, push_p(prior,sample[i].x)) for i = 1:N]
-    C = [cost(sample[i].x) for i = 1:N]
-    for i in 1:max_iters
+    C = fill(cost(sample[1].x),N)
+    @cthreads parallel for i = 1:N
+        trng=rng
+        parallel && (trng=Random.default_rng(Threads.threadid());)
+        if isfinite(logπ[i])
+            C[i] = cost(sample[i].x)
+        end
+        while (!isfinite(C[i])) || (!isfinite(logπ[i]))
+            sample[i]=op(float, Particle(rand(trng, prior)))
+            logπ[i] = logpdf(prior, push_p(prior,sample[i].x))
+            C[i] = cost(sample[i].x)
+        end
+    end
+
+    iters = 0
+    while true
+        iters += 1  
         ϵ = quantile(C,q)
-        filter_bad=C .>= ϵ
+        filter_bad=C .> ϵ
         idxok=(1:N)[.!filter_bad]
         idxbad=(1:N)[filter_bad]
-        nreps=0
-        for i in idxbad
-            @label repeat
-            b=rand(rng,idxok)
-            c=rand(rng,idxok)
-            d=rand(rng,idxok)
-            while c==b
-                c=rand(rng,idxok)
-            end
-            while d==b || d==c
-                d=rand(rng,idxok)
-            end
-            p=op(+,sample[b],op(*,op(-,sample[d],sample[c]), proposal_width))
-            nreps+=1
+        nreps= Threads.Atomic{Int}(0)
+        @cthreads parallel for i in idxbad
+            trng=rng
+            parallel && (trng=Random.default_rng(Threads.threadid());)
+            localreps=0
+            @label resample
+            b=c=d=rand(trng,idxok)
+            while c==b; c=rand(trng,idxok); end
+            while d==b || d==c; d=rand(trng,idxok); end
+            p=op(+,sample[b],op(*,op(-,sample[d],sample[c]), randn(trng)*proposal_width))
+            localreps += 1
 
             ll = logpdf(prior, push_p(prior,p.x))
-            if log(rand(rng)) > min(0.0,ll-logπ[i])
-                @goto repeat
+            if log(rand(trng)) > min(0.0,ll-logπ[i])
+                @goto resample
             end
             Cp=cost(p.x)
             if Cp > ϵ
-                @goto repeat
+                @goto resample
             end
             C[i] = Cp
             sample[i] = p
             logπ[i] = ll
+            Threads.atomic_add!(nreps,localreps)
         end
-        @show i, ϵ, nreps
-        nreps*mcmc_tol>length(idxbad) && break
-        
+        eff=length(idxbad)/nreps[]
+        verbose && @show iters, ϵ, eff
+        eff<eff_tol && break
+        ϵ<epstol && break
+        iters > max_iters && break
     end
-    getfield.(sample,:x),C
 
     θs = [push_p(prior, sample[i].x) for i = 1:N]
     l = length(prior)
     P = map(x -> Particles(x), getindex.(θs, i) for i = 1:l)
     length(P)==1 && (P=first(P))
-    (P=P,C=Particles(C))
+    (P=P, C=Particles(C))
 end
 
 
-export smc2
+export pfilter
