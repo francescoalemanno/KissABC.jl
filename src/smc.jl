@@ -1,6 +1,6 @@
 macro cthreads(condition::Symbol, loop) #does not work well because of #15276, but seems to work on Julia v0.7
     return esc(quote
-        if $condition 
+        if $condition
             Threads.@threads $loop
         else
             $loop
@@ -110,41 +110,38 @@ function smc(
     r_epstol >= 0 || error("r_epstol must be >= 0")
     mcmc_tol >= 0 || error("mcmc_tol must be >= 0")
     max_stretch > 1 || error("max_stretch must be > 1")
-    Np=length(prior)
-    min_nparticles = ceil(
-        Int,
-        3 * Np / (min(alpha, min_r_ess)),
-    )
+    Np = length(prior)
+    min_nparticles = ceil(Int, 3 * Np / (min(alpha, min_r_ess)))
     nparticles >= min_nparticles || error("nparticles must be >= $min_nparticles.")
     θs = [op(float, Particle(rand(rng, prior))) for i = 1:nparticles]
-    Xs = parallel ?
-        fetch.([
-        Threads.@spawn cost(push_p(prior, θs[$i].x)) for i = 1:nparticles]) :
+    Xs =
+        parallel ?
+        fetch.([Threads.@spawn cost(push_p(prior, θs[$i].x)) for i = 1:nparticles]) :
         [cost(push_p(prior, θs[i].x)) for i = 1:nparticles]
 
     lπs = [logpdf(prior, push_p(prior, θs[i].x)) for i = 1:nparticles]
     α = alpha
     ϵ = Inf
-    alive = fill(true,nparticles)
+    alive = fill(true, nparticles)
     iteration = 0
     # Step 1 - adaptive threshold
     while true
         iteration += 1
         ϵv = ϵ
-        ϵ = quantile(Xs[alive],α)
-        flag=false
+        ϵ = quantile(Xs[alive], α)
+        flag = false
         if ϵ > minimum(Xs[alive])
             alive = Xs .< ϵ
         else
             alive = Xs .<= ϵ
-            flag=true
+            flag = true
         end
         ESS = sum(alive)
         verbose && @show iteration, ϵ, ESS
         # Step 2 - Resampling
-        if α*ESS <= nparticles * min_r_ess
+        if α * ESS <= nparticles * min_r_ess
             idxalive = (1:nparticles)[alive]
-            idx=repeat(idxalive,ceil(Int,nparticles/length(idxalive)))[1:nparticles]
+            idx = repeat(idxalive, ceil(Int, nparticles / length(idxalive)))[1:nparticles]
             θs = θs[idx]
             Xs = Xs[idx]
             lπs = lπs[idx]
@@ -157,51 +154,55 @@ function smc(
         retry_N = 1 + mcmc_retrys
 
         for r = 1:retry_N
-                new_p = map(1:nparticles) do i
-                    a = b = i
-                    alive[i] || return (nothing,nothing,nothing)
-                    while a==i; a = rand(rng,1:nparticles); end
-                    while b==i || b==a; b = rand(rng,1:nparticles); end
-                    W = op(*, op(-, θs[b], θs[a]), max_stretch*randn(rng)/sqrt(Np))
-                    (log(rand(rng)), op(+, θs[i], W), 0.0)
+            new_p = map(1:nparticles) do i
+                a = b = i
+                alive[i] || return (nothing, nothing, nothing)
+                while a == i
+                    a = rand(rng, 1:nparticles)
                 end
-                @cthreads parallel for i = 1:nparticles # non-ideal parallelism
-                    alive[i] || continue
-                    lprob, θp, logcorr = new_p[i]
-                    isnothing(lprob) && continue
-                    lπp = logpdf(prior, push_p(prior, θp.x))
-                    lπp < 0 && (!isfinite(lπp)) && continue
-                    lM = min(lπp - lπs[i] + logcorr, 0.0)
-                    if lprob < lM 
-                        Xp = cost(push_p(prior, θp.x))
-                        if flag
-                            Xp > ϵ && continue
-                        else
-                            Xp >= ϵ && continue
-                        end
-                        θs[i] = θp
-                        Xs[i] = Xp
-                        lπs[i] = lπp
-                        if parallel 
-                            Threads.atomic_add!(accepted, 1)
-                        else
-                            accepted += 1
-                        end
+                while b == i || b == a
+                    b = rand(rng, 1:nparticles)
+                end
+                W = op(*, op(-, θs[b], θs[a]), max_stretch * randn(rng) / sqrt(Np))
+                (log(rand(rng)), op(+, θs[i], W), 0.0)
+            end
+            @cthreads parallel for i = 1:nparticles # non-ideal parallelism
+                alive[i] || continue
+                lprob, θp, logcorr = new_p[i]
+                isnothing(lprob) && continue
+                lπp = logpdf(prior, push_p(prior, θp.x))
+                lπp < 0 && (!isfinite(lπp)) && continue
+                lM = min(lπp - lπs[i] + logcorr, 0.0)
+                if lprob < lM
+                    Xp = cost(push_p(prior, θp.x))
+                    if flag
+                        Xp > ϵ && continue
+                    else
+                        Xp >= ϵ && continue
+                    end
+                    θs[i] = θp
+                    Xs[i] = Xp
+                    lπs[i] = lπp
+                    if parallel
+                        Threads.atomic_add!(accepted, 1)
+                    else
+                        accepted += 1
                     end
                 end
+            end
             accepted[] >= mcmc_tol * nparticles && break
         end
-        if 2*abs(ϵv - ϵ) < r_epstol * (abs(ϵv)+abs(ϵ)) ||
+        if 2 * abs(ϵv - ϵ) < r_epstol * (abs(ϵv) + abs(ϵ)) ||
            ϵ <= epstol ||
            accepted[] < mcmc_tol * nparticles
-           break
+            break
         end
     end
     θs = [push_p(prior, θs[i].x) for i = 1:nparticles][alive]
 
     l = length(prior)
     P = map(x -> Particles(x), getindex.(θs, i) for i = 1:l)
-    length(P)==1 && (P=first(P))
+    length(P) == 1 && (P = first(P))
     (P = P, C = Xs, ϵ = ϵ)
 end
 
@@ -272,71 +273,91 @@ Particles(sigmapoints(mean(R.P),cov(R.P)))
 
 
 
-function pfilter(prior, cost, N; rng=Random.GLOBAL_RNG, q=0.7, eff_tol = 0.1, epstol=-Inf, max_iters = Inf, proposal_width=0.75, verbose=false, parallel=false)
-    lowN=4*length(prior)
-    if N*q<=lowN
-        N=ceil(Int,(lowN+1)/q)
+function pfilter(
+    prior,
+    cost,
+    N;
+    rng = Random.GLOBAL_RNG,
+    q = 0.7,
+    eff_tol = 0.1,
+    epstol = -Inf,
+    max_iters = Inf,
+    proposal_width = 0.75,
+    verbose = false,
+    parallel = false,
+)
+    lowN = 4 * length(prior)
+    if N * q <= lowN
+        N = ceil(Int, (lowN + 1) / q)
     end
-    sample=[op(float, Particle(rand(rng, prior))) for i = 1:N]
-    logπ = [logpdf(prior, push_p(prior,sample[i].x)) for i = 1:N]
-    C = fill(cost(sample[1].x),N)
+    sample = [op(float, Particle(rand(rng, prior))) for i = 1:N]
+    logπ = [logpdf(prior, push_p(prior, sample[i].x)) for i = 1:N]
+    C = fill(cost(sample[1].x), N)
     @cthreads parallel for i = 1:N
-        trng=rng
-        parallel && (trng=Random.default_rng(Threads.threadid());)
+        trng = rng
+        parallel && (trng = Random.default_rng(Threads.threadid()))
         if isfinite(logπ[i])
             C[i] = cost(sample[i].x)
         end
         while (!isfinite(C[i])) || (!isfinite(logπ[i]))
-            sample[i]=op(float, Particle(rand(trng, prior)))
-            logπ[i] = logpdf(prior, push_p(prior,sample[i].x))
+            sample[i] = op(float, Particle(rand(trng, prior)))
+            logπ[i] = logpdf(prior, push_p(prior, sample[i].x))
             C[i] = cost(sample[i].x)
         end
     end
 
     iters = 0
     while true
-        iters += 1  
-        ϵ = quantile(C,q)
-        filter_bad=C .> ϵ
-        idxok=(1:N)[.!filter_bad]
-        idxbad=(1:N)[filter_bad]
-        nreps= Threads.Atomic{Int}(0)
+        iters += 1
+        ϵ = quantile(C, q)
+        filter_bad = C .> ϵ
+        idxok = (1:N)[.!filter_bad]
+        idxbad = (1:N)[filter_bad]
+        nreps = Threads.Atomic{Int}(0)
         @cthreads parallel for i in idxbad
-            trng=rng
-            parallel && (trng=Random.default_rng(Threads.threadid());)
-            localreps=0
+            trng = rng
+            parallel && (trng = Random.default_rng(Threads.threadid()))
+            localreps = 0
             @label resample
-            b=c=d=rand(trng,idxok)
-            while c==b; c=rand(trng,idxok); end
-            while d==b || d==c; d=rand(trng,idxok); end
-            p=op(+,sample[b],op(*,op(-,sample[d],sample[c]), randn(trng)*proposal_width))
+            b = c = d = rand(trng, idxok)
+            while c == b
+                c = rand(trng, idxok)
+            end
+            while d == b || d == c
+                d = rand(trng, idxok)
+            end
+            p = op(
+                +,
+                sample[b],
+                op(*, op(-, sample[d], sample[c]), randn(trng) * proposal_width),
+            )
             localreps += 1
 
-            ll = logpdf(prior, push_p(prior,p.x))
-            if log(rand(trng)) > min(0.0,ll-logπ[i])
+            ll = logpdf(prior, push_p(prior, p.x))
+            if log(rand(trng)) > min(0.0, ll - logπ[i])
                 @goto resample
             end
-            Cp=cost(p.x)
+            Cp = cost(p.x)
             if Cp > ϵ
                 @goto resample
             end
             C[i] = Cp
             sample[i] = p
             logπ[i] = ll
-            Threads.atomic_add!(nreps,localreps)
+            Threads.atomic_add!(nreps, localreps)
         end
-        eff=length(idxbad)/nreps[]
+        eff = length(idxbad) / nreps[]
         verbose && @show iters, ϵ, eff
-        eff<eff_tol && break
-        ϵ<epstol && break
+        eff < eff_tol && break
+        ϵ < epstol && break
         iters > max_iters && break
     end
 
     θs = [push_p(prior, sample[i].x) for i = 1:N]
     l = length(prior)
     P = map(x -> Particles(x), getindex.(θs, i) for i = 1:l)
-    length(P)==1 && (P=first(P))
-    (P=P, C=Particles(C))
+    length(P) == 1 && (P = first(P))
+    (P = P, C = Particles(C))
 end
 
 
@@ -344,64 +365,76 @@ export pfilter
 
 
 
-function ABCDE(prior, cost, ϵ_target; nparticles=50, generations=20, α=0, parallel=false, earlystop=false, verbose=true, rng=Random.GLOBAL_RNG, proposal_width=1.0)
-    @assert 0<=α<1 "α must be in 0 <= α < 1."
-    θs =[op(float, Particle(rand(rng, prior))) for i = 1:nparticles]
+function ABCDE(
+    prior,
+    cost,
+    ϵ_target;
+    nparticles = 50,
+    generations = 20,
+    α = 0,
+    parallel = false,
+    earlystop = false,
+    verbose = true,
+    rng = Random.GLOBAL_RNG,
+    proposal_width = 1.0,
+)
+    @assert 0 <= α < 1 "α must be in 0 <= α < 1."
+    θs = [op(float, Particle(rand(rng, prior))) for i = 1:nparticles]
 
-    logπ = [logpdf(prior, push_p(prior,θs[i].x)) for i = 1:nparticles]
-    Δs = fill(cost(θs[1].x),nparticles)
+    logπ = [logpdf(prior, push_p(prior, θs[i].x)) for i = 1:nparticles]
+    Δs = fill(cost(θs[1].x), nparticles)
 
     @cthreads parallel for i = 1:nparticles
-        trng=rng
-        parallel && (trng=Random.default_rng(Threads.threadid());)
+        trng = rng
+        parallel && (trng = Random.default_rng(Threads.threadid()))
         if isfinite(logπ[i])
             Δs[i] = cost(θs[i].x)
         end
         while (!isfinite(Δs[i])) || (!isfinite(logπ[i]))
-            θs[i]=op(float, Particle(rand(trng, prior)))
-            logπ[i] = logpdf(prior, push_p(prior,θs[i].x))
+            θs[i] = op(float, Particle(rand(trng, prior)))
+            logπ[i] = logpdf(prior, push_p(prior, θs[i].x))
             Δs[i] = cost(θs[i].x)
         end
     end
 
-    nsims = zeros(Int,nparticles)
-    γ = proposal_width*2.38/sqrt(2*length(prior))
-    iters=0
-    complete=1-sum(Δs.>ϵ_target)/nparticles
-    while iters<generations
-        iters+=1
+    nsims = zeros(Int, nparticles)
+    γ = proposal_width * 2.38 / sqrt(2 * length(prior))
+    iters = 0
+    complete = 1 - sum(Δs .> ϵ_target) / nparticles
+    while iters < generations
+        iters += 1
         nθs = identity.(θs)
         nΔs = identity.(Δs)
-        nlogπ=identity.(logπ)
+        nlogπ = identity.(logπ)
         ϵ_l, ϵ_h = extrema(Δs)
         if earlystop
-            ϵ_h<=ϵ_target && break
+            ϵ_h <= ϵ_target && break
         end
-        ϵ_pop = max(ϵ_target,ϵ_l + α * (ϵ_h - ϵ_l))
-        @cthreads parallel for i in 1:nparticles
+        ϵ_pop = max(ϵ_target, ϵ_l + α * (ϵ_h - ϵ_l))
+        @cthreads parallel for i = 1:nparticles
             if earlystop
                 Δs[i] <= ϵ_target && continue
             end
-            trng=rng
-            parallel && (trng=Random.default_rng(Threads.threadid());)
+            trng = rng
+            parallel && (trng = Random.default_rng(Threads.threadid()))
             s = i
             ϵ = ifelse(Δs[i] <= ϵ_target, ϵ_target, ϵ_pop)
             if Δs[i] > ϵ
-                s=rand(trng,(1:nparticles)[Δs .<= Δs[i]])
+                s = rand(trng, (1:nparticles)[Δs.<=Δs[i]])
             end
             a = s
             while a == s
-                a = rand(trng,1:nparticles)
+                a = rand(trng, 1:nparticles)
             end
             b = a
             while b == a || b == s
-                b = rand(trng,1:nparticles)
+                b = rand(trng, 1:nparticles)
             end
-            θp = op(+,θs[s],op(*,op(-,θs[a],θs[b]), γ))
-            lπ= logpdf(prior, push_p(prior,θp.x))
+            θp = op(+, θs[s], op(*, op(-, θs[a], θs[b]), γ))
+            lπ = logpdf(prior, push_p(prior, θp.x))
             w_prior = lπ - logπ[i]
-            log(rand(trng)) > min(0,w_prior) && continue
-            nsims[i]+=1
+            log(rand(trng)) > min(0, w_prior) && continue
+            nsims[i] += 1
             dp = cost(θp.x)
             if dp <= max(ϵ, Δs[i])
                 nΔs[i] = dp
@@ -414,19 +447,21 @@ function ABCDE(prior, cost, ϵ_target; nparticles=50, generations=20, α=0, para
         logπ = nlogπ
         ncomplete = 1 - sum(Δs .> ϵ_target) / nparticles
         if verbose && (ncomplete != complete || complete >= (nparticles - 1) / nparticles)
-            @info "Finished run:" completion=ncomplete nsim = sum(nsims) range_ϵ = extrema(Δs)
+            @info "Finished run:" completion = ncomplete nsim = sum(nsims) range_ϵ =
+                extrema(Δs)
         end
-        complete=ncomplete
+        complete = ncomplete
     end
-    conv=maximum(Δs) <= ϵ_target
+    conv = maximum(Δs) <= ϵ_target
     if verbose
-        @info "End:" completion = complete converged = conv nsim = sum(nsims) range_ϵ = extrema(Δs)
+        @info "End:" completion = complete converged = conv nsim = sum(nsims) range_ϵ =
+            extrema(Δs)
     end
     θs = [push_p(prior, θs[i].x) for i = 1:nparticles]
     l = length(prior)
     P = map(x -> Particles(x), getindex.(θs, i) for i = 1:l)
-    length(P)==1 && (P=first(P))
-    (P=P, C=Particles(Δs), reached_ϵ=conv)
+    length(P) == 1 && (P = first(P))
+    (P = P, C = Particles(Δs), reached_ϵ = conv)
 end
 
 

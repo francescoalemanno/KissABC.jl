@@ -13,7 +13,7 @@ makedocs(;
     ),
     pages = [
         "Home" => "index.md",
-#        "Example: Gaussian Mixture" => "example_1.md",
+        #        "Example: Gaussian Mixture" => "example_1.md",
         #"Reference" => "reference.md",
     ],
 )
