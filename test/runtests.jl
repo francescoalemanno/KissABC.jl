@@ -127,7 +127,7 @@ end
     modelabc = ApproxPosterior(prior, cost, 0.1)
     sim = sample(modelabc, AIS(50), 100, discard_initial = 50000, progress = false)
     @test all(sim .≈ params)
-    @test all(smc(prior, cost, verbose=false,min_r_ess=0.55).P .≈ params)
+    @test all(smc(prior, cost, verbose = false, min_r_ess = 0.55).P .≈ params)
 end
 
 @testset "Classical Mixture Model 0.1N+N" begin
@@ -162,7 +162,17 @@ end
         discard_initial = 5000,
         progress = false,
     )
-    ressmc = smc(prior, cost, nparticles = 2000, alpha = 0.9, epstol = 0.01,mcmc_retrys=500,mcmc_tol=0.9,verbose=false).P
+    ressmc =
+        smc(
+            prior,
+            cost,
+            nparticles = 2000,
+            alpha = 0.9,
+            epstol = 0.01,
+            mcmc_retrys = 500,
+            mcmc_tol = 0.9,
+            verbose = false,
+        ).P
     testst(alg, r) = begin
         m = mean(abs, st(r) - st_n)
         println(":", alg, ": testing m = ", m)
@@ -241,13 +251,32 @@ end
     pp = Factored(Normal(0, 5), Normal(0, 5))
     cc((x, y)) = 50 * (x + randn() * 0.01 - y^2)^2 + (y - 1 + randn() * 0.01)^2
 
-    R = smc(pp, cc, verbose = false, alpha = 0.9, nparticles = 500, epstol = 0.01, parallel=true).P
+    R =
+        smc(
+            pp,
+            cc,
+            verbose = false,
+            alpha = 0.9,
+            nparticles = 500,
+            epstol = 0.01,
+            parallel = true,
+        ).P
     @test R[1] ≈ 1
     @test R[2] ≈ 1
 
-    cc2((x, y)) = rand((50 * (x + randn() * 0.01 - y^2)^2 + (y - 1 + randn() * 0.01)^2,Inf))
+    cc2((x, y)) =
+        rand((50 * (x + randn() * 0.01 - y^2)^2 + (y - 1 + randn() * 0.01)^2, Inf))
 
-    R = smc(pp, cc2, verbose = false, alpha = 0.9, nparticles = 1000, epstol = 0.01, parallel=true).P
+    R =
+        smc(
+            pp,
+            cc2,
+            verbose = false,
+            alpha = 0.9,
+            nparticles = 1000,
+            epstol = 0.01,
+            parallel = true,
+        ).P
 
     @test R[1] ≈ 1
     @test R[2] ≈ 1

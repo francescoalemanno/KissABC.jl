@@ -9,8 +9,8 @@ function model(P, N)
 
     d1 = @. r1 * σ_1 + μ_1
     d2 = @. r1 * σ_2 + μ_2
-    ps = @. (1 + sign(r2 - prob))/2
-    @. (d1+ps*(d2-d1))
+    ps = @. (1 + sign(r2 - prob)) / 2
+    @. (d1 + ps * (d2 - d1))
 
 end
 
@@ -56,5 +56,5 @@ approx_density = ApproxPosterior(prior, D, 0.032)
 @show res
 
 # In this case, it is best to apply SMC, as it leads to tighter CI's and lower computational costs
-@time res = smc(prior, D, verbose=false, nparticles=100, alpha=0.95)
+@time res = smc(prior, D, verbose = false, nparticles = 100, alpha = 0.95)
 @show res.P
