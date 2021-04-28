@@ -55,8 +55,9 @@ function AbstractMCMC.step(
             particles[i] = op(float, unconditional_sample(rng, model))
             logdensity[i] = loglike(model, push_p(model, particles[i]))
             retrys -= 1
-            retrys < 0 &&
-                error("Prior leads to ∞ costs too often, tune the prior or increase `retry_sampling`.")
+            retrys < 0 && error(
+                "Prior leads to ∞ costs too often, tune the prior or increase `retry_sampling`.",
+            )
         end
     end
 
