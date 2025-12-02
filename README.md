@@ -1,3 +1,6 @@
+# EDIT: the spirit of KissABC lives on at ![ABCdeZ.jl](https://github.com/mauricelanghinrichs/ABCdeZ.jl), use that.
+
+
 # KissABC 3.0
 
 ![CI](https://github.com/francescoalemanno/KissABC.jl/workflows/CI/badge.svg?branch=master)
